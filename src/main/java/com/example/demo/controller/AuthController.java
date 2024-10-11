@@ -26,7 +26,7 @@ public class AuthController {
 
   private final AuthService authService;
 
-  @Operation(summary = "Authenticate user", description = "Log in a user by verifying their credentials (email and password). Returns a token for authenticated requests.")
+  @Operation(summary = "Log in a user", description = "Log in a user by verifying their credentials (email and password). Returns a token for authenticated requests.")
   @PostMapping("/login")
   public ResponseEntity<?> login(@RequestBody @Valid LoginReq request){
       LoginRes response = this.authService.login(request);
