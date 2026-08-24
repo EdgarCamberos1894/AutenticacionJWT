@@ -53,10 +53,8 @@ class RateLimitIntegrationTests {
     private MockMvc mockMvc;
 
     @Test
-    void loginLimitIsSharedInRedisAndReturnsStandardsBased429() throws Exception {
-        String request = """
-                {"email":"unknown@example.com","password":"correct horse battery staple"}
-                """;
+    void clientLoginLimitIsSharedInRedisAndReturnsStandardsBased429() throws Exception {
+        String request = loginBody("client-limit@example.com");
 
         for (int attempt = 0; attempt < 2; attempt++) {
             mockMvc.perform(post("/api/v1/auth/login")
@@ -77,5 +75,46 @@ class RateLimitIntegrationTests {
 
         long retryAfter = Long.parseLong(result.getResponse().getHeader(HttpHeaders.RETRY_AFTER));
         assertThat(retryAfter).isPositive().isLessThanOrEqualTo(300);
+    }
+
+    @Test
+    void accountLoginLimitCannotBeBypassedByChangingClientIp() throws Exception {
+        String request = loginBody("account-limit@example.com");
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .with(mockRequest -> {
+                            mockRequest.setRemoteAddr("198.51.100.11");
+                            return mockRequest;
+                        })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .with(mockRequest -> {
+                            mockRequest.setRemoteAddr("198.51.100.12");
+                            return mockRequest;
+                        })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .with(mockRequest -> {
+                            mockRequest.setRemoteAddr("198.51.100.13");
+                            return mockRequest;
+                        })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"))
+                .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
+    }
+
+    private String loginBody(String email) {
+        return """
+                {"email":"%s","password":"correct horse battery staple"}
+                """.formatted(email);
     }
 }
