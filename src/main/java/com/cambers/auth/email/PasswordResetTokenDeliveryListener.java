@@ -20,9 +20,18 @@ public class PasswordResetTokenDeliveryListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPasswordResetTokenIssued(PasswordResetTokenIssuedEvent event) {
         try {
-            delivery.deliver(event.email(), event.rawToken(), event.expiresAt());
+            delivery.deliver(event.email(), event.rawToken(), event.expiresAt(), event.issuanceId());
+        } catch (EmailDeliveryException exception) {
+            log.error(
+                    "Could not deliver password reset message issuanceId={} retryable={} providerStatus={} providerCode={}",
+                    event.issuanceId(),
+                    exception.isRetryable(),
+                    exception.getProviderStatus(),
+                    exception.getProviderCode(),
+                    exception
+            );
         } catch (RuntimeException exception) {
-            log.error("Could not deliver password reset message for {}", event.email(), exception);
+            log.error("Unexpected password reset delivery failure issuanceId={}", event.issuanceId(), exception);
         }
     }
 }

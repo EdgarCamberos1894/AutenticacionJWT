@@ -1,15 +1,15 @@
 # Authentication Service Template
 
-Production-minded authentication foundation built with Java 25, Spring Boot 4.1.1, Spring Security, PostgreSQL, Redis, Flyway and Testcontainers.
+Production-minded authentication foundation built with Java 25, Spring Boot 4.1.1, Spring Security, PostgreSQL, Redis, Flyway, Resend and Testcontainers.
 
-The `architecture/layered` branch is intentionally conventional: controllers own HTTP concerns, services coordinate application flows, repositories own persistence, entities model identity/session state, and security/token infrastructure stays behind focused components. The goal is a layered design that remains easy to navigate in collaborative projects without pushing authentication logic into controllers.
+The layered implementation is intentionally conventional: controllers own HTTP concerns, services coordinate application flows, repositories own persistence, entities model identity/session state, and security/provider infrastructure stays behind focused components.
 
 ## Branch strategy
 
 - `legacy-jwt-v1`: immutable reference to the original implementation.
-- `modern-base`: shared Java 25 / Spring Boot 4 technical baseline without authentication business flows.
-- `architecture/layered`: complete layered authentication implementation.
-- `architecture/modular`: reserved for a future feature-oriented/modular comparison.
+- `modern-base`: reviewed authentication baseline used as the common behavior reference.
+- `architecture/layered`: conventional layered implementation.
+- `architecture/modular`: reserved for the future feature-oriented/modular comparison.
 
 ## Stack
 
@@ -19,6 +19,7 @@ The `architecture/layered` branch is intentionally conventional: controllers own
 - PostgreSQL 18.6
 - Flyway
 - Redis 8.10.1 reference image
+- Resend Email API over Spring `RestClient`
 - Argon2id password hashing with legacy BCrypt verification/upgrade support
 - RS256 JWT access tokens
 - Testcontainers
@@ -56,21 +57,55 @@ New accounts start as `PENDING_VERIFICATION`; successful email verification acti
 
 Supported roles are closed application values (`USER`, `ADMIN`) persisted directly in `user_roles`. There is intentionally no dynamic role catalog or role repository in this template. JWT authorities are derived from those persisted role values as `ROLE_*` authorities.
 
-### Email verification
+### Email verification and password recovery
 
-Registration creates a one-time verification credential. Verification tokens are opaque, only their hashes are stored, and the default lifetime is 30 minutes.
+Verification and password-reset credentials are opaque one-time values. Only SHA-256 hashes are persisted. Issuance is serialized by locking the user row and PostgreSQL enforces at most one active token for each user/purpose.
 
-Issuing/resending a token locks the user row, invalidates previously active tokens of the same purpose and creates one replacement. PostgreSQL also enforces the active-token invariant, and an integration test exercises concurrent resend attempts to ensure only one active token survives.
+Verification tokens expire after 30 minutes by default; password-reset tokens expire after 15 minutes by default. Successful password reset changes the Argon2id password hash and revokes every existing authentication session and refresh token for the user.
 
-Verification/resend responses are generic where account discovery would otherwise leak information. Email delivery is triggered after the database transaction commits, so a delivery failure does not roll back a successfully persisted account or token lifecycle change.
+Recovery/request responses are deliberately generic where account discovery would otherwise leak information.
 
-Production SMTP requires STARTTLS by default and uses bounded connection/read/write timeouts, preventing a missing TLS capability from silently downgrading delivery and preventing an unavailable SMTP server from blocking a request thread indefinitely.
+## Transactional email delivery with Resend
 
-### Password recovery
+Production email is sent through Resend's HTTPS Email API. SMTP and `JavaMailSender` are not part of the production path.
 
-Password-reset requests use the same one-time, hash-only token model with a default lifetime of 15 minutes and generic outward-facing behavior for unknown accounts.
+Application flows depend on the provider-neutral `VerificationTokenDelivery`, `PasswordResetTokenDelivery` and `TransactionalEmailSender` contracts. Resend-specific HTTP behavior is isolated under `email.resend`, so authentication services do not depend on provider request/response models.
 
-A successful reset consumes the token, changes the Argon2id password hash and revokes all existing authentication sessions and refresh tokens for that user.
+Each one-time-token issuance has its own UUID. That issuance id becomes the Resend `Idempotency-Key` namespace:
+
+```text
+auth/email-verification/{issuanceId}
+auth/password-reset/{issuanceId}
+```
+
+Retrying delivery for the same issuance therefore reuses the same key and cannot intentionally create a duplicate send. A genuine resend generates a new one-time token and a new issuance id, so it remains a distinct email.
+
+Both HTML and explicit plain-text bodies are sent. Authentication links are built with URI components rather than string concatenation, dynamic HTML values are escaped, and the critical action never depends on remote images or external CSS. Messages carry low-cardinality Resend tags (`email_verification` or `password_reset`) for provider-side filtering.
+
+The Resend adapter:
+
+- authenticates with a server-side Bearer API key;
+- uses HTTPS-only provider configuration;
+- applies bounded connection and read timeouts;
+- sends an `Idempotency-Key` on every transactional email;
+- classifies provider/network failures as retryable or permanent;
+- never exposes Resend error messages to authentication clients;
+- never logs the API key, raw token or recipient address;
+- logs only safe correlation data such as issuance/provider message identifiers and provider status/code.
+
+Delivery is triggered after the authentication database transaction commits. A provider failure therefore cannot roll back a successfully persisted account/token state. The current implementation intentionally does **not** perform blind synchronous retries and does not claim guaranteed delivery. Durable retries require an outbox/queue whose sensitive delivery payload is encrypted at rest; that is a separate reliability boundary, not something to emulate with `@Async` or by storing raw recovery tokens in plaintext.
+
+### Resend production setup
+
+For production:
+
+1. Verify the sending domain in Resend and publish the DNS records required by Resend (including SPF/DKIM).
+2. Create a Resend API key with **Sending access**, restricted to that sending domain when possible.
+3. Store `RESEND_API_KEY` only as a server secret. Never expose it to browser/mobile code or commit it to Git.
+4. Set `RESEND_FROM_ADDRESS` to an address on the verified domain.
+5. Optionally configure `RESEND_FROM_NAME` and `RESEND_REPLY_TO`.
+
+`onboarding@resend.dev` is only the non-production default used so local/test configuration can bind without a real provider credential. The `prod` profile requires an explicit API key and sender address.
 
 ## Distributed rate limiting
 
@@ -101,7 +136,7 @@ Public endpoints:
 | `POST` | `/api/v1/auth/register` | `201` | Register a pending account |
 | `POST` | `/api/v1/auth/login` | `200` | Authenticate and create a session |
 | `POST` | `/api/v1/auth/refresh` | `200` | Rotate a refresh token and issue a new token pair |
-| `POST` | `/api/v1/auth/email-verification` | `204` | Request/resend an email-verification token without exposing account existence |
+| `POST` | `/api/v1/auth/email-verification` | `204` | Request/resend verification without exposing account existence |
 | `POST` | `/api/v1/auth/email-verification/confirm` | `204` | Consume a verification token |
 | `POST` | `/api/v1/auth/password-reset` | `204` | Request password recovery without exposing account existence |
 | `POST` | `/api/v1/auth/password-reset/confirm` | `204` | Consume a reset token and replace the password |
@@ -126,11 +161,11 @@ Session lookup/revocation is scoped by both `sessionId` and authenticated `userI
 - Successful commands with no representation return `204 No Content`.
 - Client/server errors use RFC 9457 Problem Details with `application/problem+json`.
 - Problem responses expose stable machine-readable `code` values; human-readable `detail` text is not an API contract.
-- Request validation failures return `422 Unprocessable Content` with structured validation pointers.
+- Request-body and method-parameter validation failures return `422 Unprocessable Content` with structured validation pointers.
 - Malformed JSON remains `400 Bad Request`.
 - Missing or invalid authentication returns `401 Unauthorized` with `WWW-Authenticate`.
 - Authenticated requests without sufficient authority return `403 Forbidden`.
-- Unsupported methods and media types retain `405` and `415` semantics.
+- Unsupported methods/media negotiation retain `405`, `406` and `415` semantics.
 - Internal exception messages and stack traces are not returned to clients.
 
 See [`docs/http-contract.md`](docs/http-contract.md) for the compact contract reference.
@@ -148,6 +183,8 @@ Run the application with the local profile:
 ```bash
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
+
+Local/test delivery logs the generated action link at DEBUG level rather than contacting Resend. Do not enable those delivery loggers in production.
 
 Local defaults:
 
@@ -183,17 +220,14 @@ Core environment variables:
 | `PASSWORD_RESET_TTL` | `PT15M` | optional positive-duration override |
 | `VERIFICATION_PUBLIC_URL` | `http://localhost:3000/verify-email` | required |
 | `PASSWORD_RESET_PUBLIC_URL` | `http://localhost:3000/reset-password` | required |
-| `MAIL_FROM` | `no-reply@example.local` | required |
-| `MAIL_HOST` | none | required |
-| `MAIL_PORT` | `587` | optional |
-| `MAIL_USERNAME` | none | required by the current SMTP production configuration |
-| `MAIL_PASSWORD` | none | required by the current SMTP production configuration |
-| `MAIL_SMTP_AUTH` | `true` | optional |
-| `MAIL_STARTTLS` | `true` | optional |
-| `MAIL_STARTTLS_REQUIRED` | `true` | optional; keep enabled for authenticated SMTP |
-| `MAIL_CONNECTION_TIMEOUT_MS` | `5000` | optional |
-| `MAIL_READ_TIMEOUT_MS` | `5000` | optional |
-| `MAIL_WRITE_TIMEOUT_MS` | `5000` | optional |
+| `AUTH_EMAIL_PRODUCT_NAME` | `Authentication` | optional branding |
+| `RESEND_API_KEY` | not used by local/test delivery | required secret in `prod` |
+| `RESEND_FROM_ADDRESS` | `onboarding@resend.dev` outside prod | required verified-domain sender in `prod` |
+| `RESEND_FROM_NAME` | `Authentication` | optional |
+| `RESEND_REPLY_TO` | empty | optional |
+| `RESEND_BASE_URL` | `https://api.resend.com` | normally leave unchanged |
+| `RESEND_CONNECT_TIMEOUT` | `PT3S` | optional positive duration |
+| `RESEND_READ_TIMEOUT` | `PT5S` | optional positive duration |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` in `local`; empty otherwise | set explicit browser origins when cross-origin access is required |
 | `TRUSTED_PROXY_ADDRESSES` | empty | configure only known proxy/load-balancer addresses |
 | `RATE_LIMIT_ENABLED` | `true` | optional |
@@ -208,7 +242,7 @@ Run the complete verification suite:
 ./mvnw verify
 ```
 
-The suite includes PostgreSQL-backed authentication flows, Redis-backed rate-limit behavior, concurrent one-time-token issuance, browser CORS preflights, legacy BCrypt migration and architecture rules.
+The suite includes PostgreSQL-backed authentication flows, Redis-backed rate-limit behavior, concurrent one-time-token issuance, browser CORS preflights, legacy BCrypt migration, RFC 9457 contract checks, transactional email composition, Resend HTTP/idempotency/error-classification tests and architecture rules.
 
 Maven Enforcer requires Java 25 and a supported Maven 3.9.x toolchain. ArchUnit prevents selected dependency inversions such as controllers accessing repositories directly or entities depending on application/HTTP/security layers.
 
@@ -216,8 +250,8 @@ GitHub Actions runs Maven verification and builds the application container imag
 
 ## Security boundaries and future extensions
 
-This template intentionally does not yet implement MFA/passkeys, social/OIDC login, device attestation, guaranteed email delivery through an outbox/queue, key-ring/JWK-based signing-key rotation, or immediate per-request revocation checks for already-issued access JWTs.
+This template intentionally does not yet implement MFA/passkeys, social/OIDC login, device attestation, a durable encrypted email outbox, Resend delivery-event webhooks, key-ring/JWK-based signing-key rotation, or immediate per-request revocation checks for already-issued access JWTs.
 
-Generic recovery responses reduce direct account enumeration but do not attempt artificial response-time equalization; a production system with stricter anti-enumeration requirements should move delivery behind a durable asynchronous boundary rather than adding sleeps to request threads.
+Generic recovery responses reduce direct account enumeration but do not attempt artificial response-time equalization. A system with stricter enumeration/delivery requirements should move sensitive email delivery behind a durable encrypted asynchronous boundary instead of adding sleeps or untracked in-memory retries to request threads.
 
 If bearer credentials are ever moved to cookies, revisit CSRF protection. If deployment topology changes, update `TRUSTED_PROXY_ADDRESSES` deliberately instead of trusting arbitrary forwarded headers.

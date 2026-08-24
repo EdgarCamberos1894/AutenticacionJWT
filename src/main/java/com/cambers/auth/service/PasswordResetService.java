@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -99,15 +100,17 @@ public class PasswordResetService {
 
         GeneratedOpaqueToken generatedToken = tokenGenerator.generate();
         Instant expiresAt = now.plus(properties.passwordResetTtl());
-        oneTimeTokenRepository.save(new OneTimeToken(
+        OneTimeToken token = oneTimeTokenRepository.save(new OneTimeToken(
                 user,
                 TokenPurpose.RESET_PASSWORD,
                 generatedToken.hash(),
                 now,
                 expiresAt
         ));
+        UUID issuanceId = Objects.requireNonNull(token.getId(), "Persisted password-reset token must have an id");
 
         eventPublisher.publishEvent(new PasswordResetTokenIssuedEvent(
+                issuanceId,
                 user.getEmail(),
                 generatedToken.value(),
                 expiresAt
