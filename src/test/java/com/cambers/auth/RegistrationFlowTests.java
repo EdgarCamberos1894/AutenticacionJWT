@@ -99,8 +99,8 @@ class RegistrationFlowTests {
     void verificationActivatesAccountAndAllowsLogin() throws Exception {
         register();
         User user = userRepository.findByEmailIgnoreCase(EMAIL).orElseThrow();
+        oneTimeTokenRepository.deleteAllInBatch();
         Instant now = Instant.now();
-        oneTimeTokenRepository.invalidateActiveTokens(user.getId(), TokenPurpose.VERIFY_EMAIL, now);
 
         GeneratedOpaqueToken verificationToken = opaqueTokenGenerator.generate();
         OneTimeToken confirmableToken = oneTimeTokenRepository.saveAndFlush(new OneTimeToken(
