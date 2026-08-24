@@ -1,6 +1,5 @@
 package com.cambers.auth.entity;
 
-import com.cambers.auth.enums.TokenPurpose;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
