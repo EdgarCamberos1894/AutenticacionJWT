@@ -1,6 +1,10 @@
 package com.cambers.auth.exception;
 
+import com.cambers.auth.ratelimit.RateLimitBackendUnavailableException;
+import com.cambers.auth.ratelimit.RateLimitExceededException;
 import com.cambers.auth.validation.ValidationError;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -15,25 +19,43 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.util.Comparator;
 import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private final Clock clock;
+
+    public GlobalExceptionHandler(Clock clock) {
+        this.clock = clock;
+    }
+
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Object> handleApiException(ApiException exception, WebRequest request) {
         ProblemDetail problem = problem(exception.status(), exception.code(), exception.getMessage());
         HttpHeaders headers = new HttpHeaders();
+
         if (exception.status() == HttpStatus.UNAUTHORIZED) {
             headers.set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         }
+        if (exception instanceof RateLimitExceededException rateLimitExceededException) {
+            headers.set(HttpHeaders.RETRY_AFTER, Long.toString(rateLimitExceededException.retryAfterSeconds()));
+        }
+        if (exception instanceof RateLimitBackendUnavailableException) {
+            headers.set(HttpHeaders.RETRY_AFTER, "1");
+            log.error("Rate-limit backend unavailable while processing {}", request.getDescription(false), exception);
+        }
+
         return handleExceptionInternal(exception, problem, headers, exception.status(), request);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleUnexpectedException(Exception exception, WebRequest request) {
+        log.error("Unhandled exception while processing {}", request.getDescription(false), exception);
         ProblemDetail problem = problem(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 ProblemCode.INTERNAL_ERROR,
@@ -130,9 +152,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             if (problem.getProperties() == null || !problem.getProperties().containsKey("code")) {
                 enrich(problem, code);
             }
-            if (statusCode.is5xxServerError()) {
-                problem.setDetail("An unexpected error occurred.");
-            }
             safeBody = problem;
         }
         return super.handleExceptionInternal(exception, safeBody, headers, statusCode, request);
@@ -147,8 +166,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private void enrich(ProblemDetail problem, ProblemCode code) {
         problem.setType(code.type());
         problem.setTitle(code.title());
-        problem.setProperty("code", code.name());
-        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty("code", code.value());
+        problem.setProperty("timestamp", clock.instant());
     }
 
     private ProblemCode codeFor(HttpStatusCode statusCode) {
