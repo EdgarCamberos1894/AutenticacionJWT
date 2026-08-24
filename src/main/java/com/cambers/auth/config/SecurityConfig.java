@@ -1,7 +1,9 @@
 package com.cambers.auth.config;
 
+import com.cambers.auth.config.properties.ClientIpProperties;
 import com.cambers.auth.security.RestAccessDeniedHandler;
 import com.cambers.auth.security.RestAuthenticationEntryPoint;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -10,7 +12,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(ClientIpProperties.class)
 public class SecurityConfig {
 
     @Bean
