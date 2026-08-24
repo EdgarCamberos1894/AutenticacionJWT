@@ -4,14 +4,35 @@ The API uses HTTP semantics directly for successful responses and RFC 9457 Probl
 
 ## Success responses
 
-Do not wrap every response in a custom `success/message/data` envelope.
+Responses are not wrapped in a universal `success/message/data` envelope.
 
 | Situation | Status | Body / headers |
 | --- | ---: | --- |
 | Read resource or successful login/refresh | `200 OK` | Resource/action DTO |
-| Create resource | `201 Created` | Resource DTO when useful; `Location` header when a canonical URI exists |
-| Accepted for genuinely deferred processing | `202 Accepted` | Optional status/operation representation |
+| Create resource | `201 Created` | Resource DTO when useful |
 | Successful command with no representation | `204 No Content` | No response body |
+
+Login and refresh responses include `Cache-Control: no-store` and `Pragma: no-cache` because they contain bearer credentials.
+
+## Authentication endpoints
+
+| Method | Endpoint | Success | Authentication |
+| --- | --- | ---: | --- |
+| `POST` | `/api/v1/auth/register` | `201 Created` | Public |
+| `POST` | `/api/v1/auth/login` | `200 OK` | Public |
+| `POST` | `/api/v1/auth/refresh` | `200 OK` | Public; refresh token in request body |
+| `POST` | `/api/v1/auth/email-verification` | `204 No Content` | Public |
+| `POST` | `/api/v1/auth/email-verification/confirm` | `204 No Content` | Public |
+| `POST` | `/api/v1/auth/password-reset` | `204 No Content` | Public |
+| `POST` | `/api/v1/auth/password-reset/confirm` | `204 No Content` | Public |
+| `POST` | `/api/v1/auth/logout` | `204 No Content` | Bearer access token |
+| `POST` | `/api/v1/auth/logout-all` | `204 No Content` | Bearer access token |
+| `GET` | `/api/v1/auth/sessions` | `200 OK` | Bearer access token |
+| `DELETE` | `/api/v1/auth/sessions/{sessionId}` | `204 No Content` | Bearer access token |
+
+Email-verification resend and password-reset request use the same outward-facing `204` response whether or not the supplied account can perform the requested flow. Clients must not infer account existence from those responses.
+
+Session revocation is ownership-scoped by the authenticated user. Attempting to address another user's session does not expose or mutate that session.
 
 ## Client and server errors
 
@@ -29,7 +50,9 @@ Errors use `Content-Type: application/problem+json`.
 | Syntactically valid request with invalid fields/instructions | `422 Unprocessable Content` |
 | Rate limit exceeded | `429 Too Many Requests` |
 | Unexpected server failure | `500 Internal Server Error` |
-| Temporarily unavailable dependency/service | `503 Service Unavailable` when applicable |
+| Required rate-limit backend unavailable | `503 Service Unavailable` |
+
+Authentication failures include `WWW-Authenticate: Bearer` where applicable. Rate-limit responses include `Retry-After`.
 
 ## Problem Details shape
 
@@ -53,18 +76,17 @@ Errors use `Content-Type: application/problem+json`.
 
 `code`, not `detail`, is the stable machine-readable extension. Clients must not branch on human-readable text.
 
-## Planned authentication semantics
+Validation failures may expose an `errors` extension with JSON-pointer-like field locations. Internal exception messages and stack traces are not part of the public response contract.
 
-| Endpoint/action | Expected success |
-| --- | ---: |
-| Register account | `201 Created` |
-| Login | `200 OK` |
-| Refresh access token | `200 OK` |
-| Logout current session | `204 No Content` |
-| Revoke one session | `204 No Content` |
-| Revoke all sessions | `204 No Content` |
-| Verify email | `204 No Content` |
-| Reset password | `204 No Content` |
-| Request password reset | `202 Accepted` only if delivery is actually deferred; otherwise `204 No Content` |
+## Token response contract
 
-Authentication-sensitive endpoints must use generic outward-facing responses where revealing whether an account exists would enable account enumeration.
+Successful login and refresh return a token-pair representation containing:
+
+- bearer access token
+- opaque refresh token
+- token type
+- access-token expiration
+- refresh-token expiration
+- authentication session id
+
+The access token is presented through the `Authorization: Bearer <token>` header on authenticated endpoints. Refresh tokens are not accepted as bearer access credentials.
