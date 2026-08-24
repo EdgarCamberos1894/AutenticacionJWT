@@ -2,6 +2,8 @@ package com.cambers.auth.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,6 +14,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -38,8 +41,9 @@ public class AuthSession {
     @Column(name = "revoked_at")
     private Instant revokedAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "revoke_reason", length = 100)
-    private String revokeReason;
+    private SessionRevocationReason revocationReason;
 
     @Column(name = "user_agent", length = 512)
     private String userAgent;
@@ -51,8 +55,8 @@ public class AuthSession {
     }
 
     public AuthSession(User user, Instant expiresAt, String userAgent, String ipAddress) {
-        this.user = user;
-        this.expiresAt = expiresAt;
+        this.user = Objects.requireNonNull(user, "user must not be null");
+        this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt must not be null");
         this.userAgent = userAgent;
         this.ipAddress = ipAddress;
     }
@@ -88,8 +92,8 @@ public class AuthSession {
         return revokedAt;
     }
 
-    public String getRevokeReason() {
-        return revokeReason;
+    public SessionRevocationReason getRevocationReason() {
+        return revocationReason;
     }
 
     public String getUserAgent() {
@@ -109,13 +113,15 @@ public class AuthSession {
     }
 
     public void touch(Instant now) {
-        lastUsedAt = now;
+        lastUsedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
-    public void revoke(Instant now, String reason) {
+    public void revoke(Instant now, SessionRevocationReason reason) {
+        Objects.requireNonNull(now, "now must not be null");
+        Objects.requireNonNull(reason, "reason must not be null");
         if (revokedAt == null) {
             revokedAt = now;
-            revokeReason = reason;
+            revocationReason = reason;
         }
     }
 }
