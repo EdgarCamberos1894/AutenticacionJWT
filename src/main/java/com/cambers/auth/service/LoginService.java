@@ -70,7 +70,7 @@ public class LoginService {
         }
 
         Instant now = clock.instant();
-        if (passwordEncoder.upgradeEncoding(user.getPasswordHash())) {
+        if (requiresPasswordUpgrade(user.getPasswordHash())) {
             user.changePasswordHash(passwordEncoder.encode(request.password()), now);
         }
 
@@ -84,6 +84,16 @@ public class LoginService {
         ));
 
         return tokenPairIssuer.issue(user, session, null);
+    }
+
+    private boolean requiresPasswordUpgrade(String passwordHash) {
+        return isUnprefixedLegacyBcrypt(passwordHash) || passwordEncoder.upgradeEncoding(passwordHash);
+    }
+
+    private boolean isUnprefixedLegacyBcrypt(String passwordHash) {
+        return passwordHash.startsWith("$2a$")
+                || passwordHash.startsWith("$2b$")
+                || passwordHash.startsWith("$2y$");
     }
 
     private UnauthorizedException invalidCredentials() {
