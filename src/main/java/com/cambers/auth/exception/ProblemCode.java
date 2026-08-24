@@ -18,6 +18,7 @@ public enum ProblemCode {
     METHOD_NOT_ALLOWED("method-not-allowed", "Method not allowed"),
     UNSUPPORTED_MEDIA_TYPE("unsupported-media-type", "Unsupported media type"),
     RATE_LIMIT_EXCEEDED("rate-limit-exceeded", "Too many requests"),
+    SERVICE_UNAVAILABLE("service-unavailable", "Service unavailable"),
     INTERNAL_ERROR("internal-error", "Internal server error");
 
     private static final String TYPE_PREFIX = "urn:cambers:problem:";

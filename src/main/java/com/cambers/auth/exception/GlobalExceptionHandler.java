@@ -29,13 +29,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (exception.status() == HttpStatus.UNAUTHORIZED) {
             headers.set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         }
-        return handleExceptionInternal(
-                exception,
-                problem,
-                headers,
-                exception.status(),
-                request
-        );
+        return handleExceptionInternal(exception, problem, headers, exception.status(), request);
     }
 
     @ExceptionHandler(Exception.class)
@@ -77,14 +71,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "One or more request fields are invalid."
         );
         problem.setProperty("errors", errors);
-
-        return handleExceptionInternal(
-                exception,
-                problem,
-                headers,
-                HttpStatus.UNPROCESSABLE_CONTENT,
-                request
-        );
+        return handleExceptionInternal(exception, problem, headers, HttpStatus.UNPROCESSABLE_CONTENT, request);
     }
 
     @Override
@@ -93,7 +80,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request) {
-
         ProblemDetail problem = problem(
                 HttpStatus.BAD_REQUEST,
                 ProblemCode.INVALID_REQUEST,
@@ -108,7 +94,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request) {
-
         ProblemDetail problem = problem(
                 HttpStatus.METHOD_NOT_ALLOWED,
                 ProblemCode.METHOD_NOT_ALLOWED,
@@ -123,7 +108,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request) {
-
         ProblemDetail problem = problem(
                 HttpStatus.UNSUPPORTED_MEDIA_TYPE,
                 ProblemCode.UNSUPPORTED_MEDIA_TYPE,
@@ -151,7 +135,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             }
             safeBody = problem;
         }
-
         return super.handleExceptionInternal(exception, safeBody, headers, statusCode, request);
     }
 
@@ -179,6 +162,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             case 415 -> ProblemCode.UNSUPPORTED_MEDIA_TYPE;
             case 422 -> ProblemCode.VALIDATION_ERROR;
             case 429 -> ProblemCode.RATE_LIMIT_EXCEEDED;
+            case 503 -> ProblemCode.SERVICE_UNAVAILABLE;
             default -> ProblemCode.INTERNAL_ERROR;
         };
     }

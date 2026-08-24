@@ -3,6 +3,9 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/authdb}
     username: ${DB_USER:auth}
     password: ${DB_PASSWORD:auth}
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
   jpa:
     show-sql: false
 
