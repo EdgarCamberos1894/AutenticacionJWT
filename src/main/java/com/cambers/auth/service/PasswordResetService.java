@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -32,6 +31,7 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final SessionRevocationService sessionRevocationService;
     private final ApplicationEventPublisher eventPublisher;
+    private final EmailNormalizer emailNormalizer;
     private final Clock clock;
 
     public PasswordResetService(
@@ -42,6 +42,7 @@ public class PasswordResetService {
             PasswordEncoder passwordEncoder,
             SessionRevocationService sessionRevocationService,
             ApplicationEventPublisher eventPublisher,
+            EmailNormalizer emailNormalizer,
             Clock clock) {
         this.oneTimeTokenRepository = oneTimeTokenRepository;
         this.userRepository = userRepository;
@@ -50,12 +51,13 @@ public class PasswordResetService {
         this.passwordEncoder = passwordEncoder;
         this.sessionRevocationService = sessionRevocationService;
         this.eventPublisher = eventPublisher;
+        this.emailNormalizer = emailNormalizer;
         this.clock = clock;
     }
 
     @Transactional
     public void requestReset(String email) {
-        String normalizedEmail = email.strip().toLowerCase(Locale.ROOT);
+        String normalizedEmail = emailNormalizer.normalize(email);
         userRepository.findByEmailIgnoreCaseForUpdate(normalizedEmail)
                 .filter(User::isAuthenticationAllowed)
                 .ifPresent(this::issueResetTokenForLockedUser);
