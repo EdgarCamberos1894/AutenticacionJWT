@@ -27,7 +27,7 @@ public interface OneTimeTokenRepository extends JpaRepository<OneTimeToken, UUID
             """)
     Optional<OneTimeToken> findByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query("""
             update OneTimeToken token
             set token.invalidatedAt = :now
@@ -42,7 +42,7 @@ public interface OneTimeTokenRepository extends JpaRepository<OneTimeToken, UUID
             @Param("now") Instant now
     );
 
-    @Modifying(clearAutomatically = false, flushAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query("""
             update OneTimeToken token
             set token.invalidatedAt = :now
