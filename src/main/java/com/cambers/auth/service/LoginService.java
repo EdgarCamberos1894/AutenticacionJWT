@@ -7,6 +7,7 @@ import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.User;
 import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.exception.UnauthorizedException;
+import com.cambers.auth.ratelimit.LoginRateLimitService;
 import com.cambers.auth.repository.AuthSessionRepository;
 import com.cambers.auth.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +25,7 @@ public class LoginService {
     private final AuthSessionRepository authSessionRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenPairIssuer tokenPairIssuer;
+    private final LoginRateLimitService loginRateLimitService;
     private final SessionProperties sessionProperties;
     private final Clock clock;
     private final String dummyPasswordHash;
@@ -33,12 +35,14 @@ public class LoginService {
             AuthSessionRepository authSessionRepository,
             PasswordEncoder passwordEncoder,
             TokenPairIssuer tokenPairIssuer,
+            LoginRateLimitService loginRateLimitService,
             SessionProperties sessionProperties,
             Clock clock) {
         this.userRepository = userRepository;
         this.authSessionRepository = authSessionRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenPairIssuer = tokenPairIssuer;
+        this.loginRateLimitService = loginRateLimitService;
         this.sessionProperties = sessionProperties;
         this.clock = clock;
         this.dummyPasswordHash = passwordEncoder.encode("authentication-service-dummy-password");
@@ -47,8 +51,9 @@ public class LoginService {
     @Transactional
     public TokenResponse login(LoginRequest request, ClientMetadata clientMetadata) {
         String normalizedEmail = request.email().strip().toLowerCase(Locale.ROOT);
-        User user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
+        loginRateLimitService.checkAccount(normalizedEmail);
 
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
         if (user == null) {
             passwordEncoder.matches(request.password(), dummyPasswordHash);
             throw invalidCredentials();
