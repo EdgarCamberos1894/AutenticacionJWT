@@ -1,7 +1,7 @@
 package com.cambers.auth.repository;
 
 import com.cambers.auth.entity.OneTimeToken;
-import com.cambers.auth.enums.TokenPurpose;
+import com.cambers.auth.entity.TokenPurpose;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
