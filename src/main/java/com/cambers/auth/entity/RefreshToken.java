@@ -69,10 +69,6 @@ public class RefreshToken {
         return session;
     }
 
-    public RefreshToken getParentToken() {
-        return parentToken;
-    }
-
     public String getTokenHash() {
         return tokenHash;
     }
@@ -107,12 +103,5 @@ public class RefreshToken {
 
     public void markUsed(Instant now) {
         usedAt = Objects.requireNonNull(now, "now must not be null");
-    }
-
-    public void revoke(Instant now) {
-        Objects.requireNonNull(now, "now must not be null");
-        if (revokedAt == null) {
-            revokedAt = now;
-        }
     }
 }
