@@ -2,7 +2,7 @@ package com.cambers.auth.service;
 
 import com.cambers.auth.config.properties.SessionProperties;
 import com.cambers.auth.dto.LoginRequest;
-import com.cambers.auth.dto.TokenResponse;
+import com.cambers.auth.dto.TokenPairResponse;
 import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.User;
 import com.cambers.auth.exception.ProblemCode;
@@ -51,7 +51,7 @@ public class LoginService {
     }
 
     @Transactional
-    public TokenResponse login(LoginRequest request, ClientMetadata clientMetadata) {
+    public TokenPairResponse login(LoginRequest request, SessionClientMetadata clientMetadata) {
         String normalizedEmail = emailNormalizer.normalize(request.email());
         loginRateLimitService.checkAccount(normalizedEmail);
 
