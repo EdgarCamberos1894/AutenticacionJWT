@@ -1,15 +1,13 @@
 package com.cambers.auth;
 
 import com.cambers.auth.entity.OneTimeToken;
-import com.cambers.auth.entity.Role;
+import com.cambers.auth.entity.RoleName;
 import com.cambers.auth.entity.SessionRevocationReason;
+import com.cambers.auth.entity.TokenPurpose;
 import com.cambers.auth.entity.User;
-import com.cambers.auth.enums.RoleName;
-import com.cambers.auth.enums.TokenPurpose;
 import com.cambers.auth.repository.AuthSessionRepository;
 import com.cambers.auth.repository.OneTimeTokenRepository;
 import com.cambers.auth.repository.RefreshTokenRepository;
-import com.cambers.auth.repository.RoleRepository;
 import com.cambers.auth.repository.UserRepository;
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
 import com.cambers.auth.security.token.SecureOpaqueTokenGenerator;
@@ -54,9 +52,6 @@ class PasswordResetFlowTests {
 
     @Autowired
     private UserRepository userRepository;
-
-    @Autowired
-    private RoleRepository roleRepository;
 
     @Autowired
     private AuthSessionRepository authSessionRepository;
@@ -176,10 +171,9 @@ class PasswordResetFlowTests {
     }
 
     private User createVerifiedUser() {
-        Role userRole = roleRepository.findById(RoleName.USER).orElseThrow();
         User user = new User(EMAIL, passwordEncoder.encode(OLD_PASSWORD));
         user.verifyEmail(Instant.now());
-        user.addRole(userRole);
+        user.assignRole(RoleName.USER);
         return userRepository.saveAndFlush(user);
     }
 
