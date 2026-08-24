@@ -93,9 +93,6 @@ public class EmailVerificationService {
         User user = token.getUser();
         oneTimeTokenRepository.consumeActiveTokens(user.getId(), TokenPurpose.VERIFY_EMAIL, now);
         user.verifyEmail(now);
-        if (user.getStatus() == AccountStatus.PENDING_VERIFICATION) {
-            user.setStatus(AccountStatus.ACTIVE);
-        }
     }
 
     private BadRequestException invalidVerificationToken() {
