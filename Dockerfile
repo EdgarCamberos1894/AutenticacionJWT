@@ -1,14 +1,16 @@
-# Etapa de construccion
-FROM maven:3.9-eclipse-temurin-17-alpine as build
-WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline
-COPY src ./src
-RUN mvn clean package -DskipTests
+FROM eclipse-temurin:25-jdk AS build
+WORKDIR /workspace
 
-# Etapa de ejecucion
-FROM openjdk:17-jdk-alpine
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+RUN chmod +x mvnw && ./mvnw -B dependency:go-offline
+
+COPY src src
+RUN ./mvnw -B -DskipTests package
+
+FROM eclipse-temurin:25-jre
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=build --chown=10001:0 /workspace/target/*.jar /app/app.jar
+USER 10001
 EXPOSE 8080
-ENTRYPOINT ["java", "-Xmx512m", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "/app/app.jar"]
