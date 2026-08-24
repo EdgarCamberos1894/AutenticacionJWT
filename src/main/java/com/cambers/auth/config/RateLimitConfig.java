@@ -1,6 +1,7 @@
 package com.cambers.auth.config;
 
 import com.cambers.auth.config.properties.RateLimitProperties;
+import com.cambers.auth.ratelimit.ClientIpResolver;
 import com.cambers.auth.ratelimit.RateLimitInterceptor;
 import com.cambers.auth.ratelimit.RateLimitPolicyResolver;
 import com.cambers.auth.ratelimit.RequestRateLimiter;
@@ -33,8 +34,14 @@ public class RateLimitConfig {
         RateLimitInterceptor rateLimitInterceptor(
                 RateLimitPolicyResolver policyResolver,
                 RequestRateLimiter requestRateLimiter,
+                ClientIpResolver clientIpResolver,
                 SecurityProblemWriter problemWriter) {
-            return new RateLimitInterceptor(policyResolver, requestRateLimiter, problemWriter);
+            return new RateLimitInterceptor(
+                    policyResolver,
+                    requestRateLimiter,
+                    clientIpResolver,
+                    problemWriter
+            );
         }
 
         @Bean
