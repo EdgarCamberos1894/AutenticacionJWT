@@ -8,6 +8,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.util.Objects;
+
 @Entity
 @Table(name = "roles")
 public class Role {
@@ -21,10 +23,26 @@ public class Role {
     }
 
     public Role(RoleName name) {
-        this.name = name;
+        this.name = Objects.requireNonNull(name, "name must not be null");
     }
 
     public RoleName getName() {
         return name;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof Role role)) {
+            return false;
+        }
+        return name == role.name;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(name);
     }
 }
