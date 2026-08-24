@@ -1,21 +1,21 @@
 package com.cambers.auth.controller;
 
+import com.cambers.auth.dto.AuthSessionResponse;
 import com.cambers.auth.dto.EmailVerificationRequest;
 import com.cambers.auth.dto.EmailVerificationResendRequest;
 import com.cambers.auth.dto.LoginRequest;
 import com.cambers.auth.dto.PasswordResetConfirmRequest;
 import com.cambers.auth.dto.PasswordResetRequest;
-import com.cambers.auth.dto.RefreshRequest;
+import com.cambers.auth.dto.RefreshTokenRequest;
 import com.cambers.auth.dto.RegisterRequest;
 import com.cambers.auth.dto.RegistrationResponse;
-import com.cambers.auth.dto.SessionResponse;
-import com.cambers.auth.dto.TokenResponse;
+import com.cambers.auth.dto.TokenPairResponse;
 import com.cambers.auth.ratelimit.ClientIpResolver;
-import com.cambers.auth.service.AuthenticationService;
-import com.cambers.auth.service.ClientMetadata;
+import com.cambers.auth.service.AuthenticationFacade;
 import com.cambers.auth.service.EmailVerificationService;
 import com.cambers.auth.service.PasswordResetService;
 import com.cambers.auth.service.RegistrationService;
+import com.cambers.auth.service.SessionClientMetadata;
 import com.cambers.auth.service.SessionManagementService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -40,7 +40,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
-    private final AuthenticationService authenticationService;
+    private final AuthenticationFacade authenticationFacade;
     private final RegistrationService registrationService;
     private final EmailVerificationService emailVerificationService;
     private final PasswordResetService passwordResetService;
@@ -48,13 +48,13 @@ public class AuthController {
     private final ClientIpResolver clientIpResolver;
 
     public AuthController(
-            AuthenticationService authenticationService,
+            AuthenticationFacade authenticationFacade,
             RegistrationService registrationService,
             EmailVerificationService emailVerificationService,
             PasswordResetService passwordResetService,
             SessionManagementService sessionManagementService,
             ClientIpResolver clientIpResolver) {
-        this.authenticationService = authenticationService;
+        this.authenticationFacade = authenticationFacade;
         this.registrationService = registrationService;
         this.emailVerificationService = emailVerificationService;
         this.passwordResetService = passwordResetService;
@@ -69,19 +69,19 @@ public class AuthController {
     }
 
     @PostMapping(path = "/login", consumes = "application/json", produces = "application/json")
-    public ResponseEntity<TokenResponse> login(
+    public ResponseEntity<TokenPairResponse> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest servletRequest) {
-        ClientMetadata clientMetadata = new ClientMetadata(
+        SessionClientMetadata clientMetadata = new SessionClientMetadata(
                 servletRequest.getHeader(HttpHeaders.USER_AGENT),
                 clientIpResolver.resolve(servletRequest)
         );
-        return tokenResponse(authenticationService.login(request, clientMetadata));
+        return tokenResponse(authenticationFacade.login(request, clientMetadata));
     }
 
     @PostMapping(path = "/refresh", consumes = "application/json", produces = "application/json")
-    public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
-        return tokenResponse(authenticationService.refresh(request));
+    public ResponseEntity<TokenPairResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return tokenResponse(authenticationFacade.refresh(request));
     }
 
     @PostMapping(path = "/email-verification", consumes = "application/json")
@@ -124,7 +124,7 @@ public class AuthController {
     }
 
     @GetMapping(path = "/sessions", produces = "application/json")
-    public List<SessionResponse> sessions(@AuthenticationPrincipal Jwt jwt) {
+    public List<AuthSessionResponse> listSessions(@AuthenticationPrincipal Jwt jwt) {
         return sessionManagementService.listActiveSessions(userId(jwt), sessionId(jwt));
     }
 
@@ -136,7 +136,7 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
-    private ResponseEntity<TokenResponse> tokenResponse(TokenResponse response) {
+    private ResponseEntity<TokenPairResponse> tokenResponse(TokenPairResponse response) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.PRAGMA, "no-cache")
