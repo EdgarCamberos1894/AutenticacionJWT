@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -29,6 +28,7 @@ public class EmailVerificationService {
     private final SecureOpaqueTokenGenerator tokenGenerator;
     private final OneTimeTokenProperties properties;
     private final ApplicationEventPublisher eventPublisher;
+    private final EmailNormalizer emailNormalizer;
     private final Clock clock;
 
     public EmailVerificationService(
@@ -37,12 +37,14 @@ public class EmailVerificationService {
             SecureOpaqueTokenGenerator tokenGenerator,
             OneTimeTokenProperties properties,
             ApplicationEventPublisher eventPublisher,
+            EmailNormalizer emailNormalizer,
             Clock clock) {
         this.oneTimeTokenRepository = oneTimeTokenRepository;
         this.userRepository = userRepository;
         this.tokenGenerator = tokenGenerator;
         this.properties = properties;
         this.eventPublisher = eventPublisher;
+        this.emailNormalizer = emailNormalizer;
         this.clock = clock;
     }
 
@@ -55,7 +57,7 @@ public class EmailVerificationService {
 
     @Transactional
     public void resend(String email) {
-        String normalizedEmail = email.strip().toLowerCase(Locale.ROOT);
+        String normalizedEmail = emailNormalizer.normalize(email);
         userRepository.findByEmailIgnoreCaseForUpdate(normalizedEmail)
                 .filter(user -> !user.isEmailVerified())
                 .filter(user -> user.getStatus() == AccountStatus.PENDING_VERIFICATION)
