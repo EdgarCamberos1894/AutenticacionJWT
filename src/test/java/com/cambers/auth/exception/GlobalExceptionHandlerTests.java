@@ -2,11 +2,15 @@ package com.cambers.auth.exception;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Clock;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -15,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(ContractTestController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTests.TestClockConfig.class})
 class GlobalExceptionHandlerTests {
 
     @Autowired
@@ -42,5 +46,14 @@ class GlobalExceptionHandlerTests {
                 .andExpect(jsonPath("$.type").value("urn:cambers:problem:conflict"))
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class TestClockConfig {
+
+        @Bean
+        Clock clock() {
+            return Clock.systemUTC();
+        }
     }
 }
