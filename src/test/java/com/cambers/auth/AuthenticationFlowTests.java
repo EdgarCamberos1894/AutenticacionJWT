@@ -17,6 +17,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -101,6 +102,24 @@ class AuthenticationFlowTests {
         assertThat(jwt.getSubject()).isEqualTo(user.getId().toString());
         assertThat(jwt.getClaimAsString("sid")).isEqualTo(sessionId);
         assertThat(jwt.getClaimAsString("token_type")).isEqualTo("access");
+    }
+
+    @Test
+    void unprefixedLegacyBcryptHashAuthenticatesAndUpgradesToArgon2id() throws Exception {
+        Instant now = Instant.now();
+        String legacyBcryptHash = new BCryptPasswordEncoder(12).encode(PASSWORD);
+        assertThat(legacyBcryptHash).startsWith("$2");
+
+        User user = new User(EMAIL, legacyBcryptHash, now);
+        user.verifyEmail(now);
+        user.assignRole(RoleName.USER, now);
+        userRepository.saveAndFlush(user);
+
+        performLogin(EMAIL, PASSWORD);
+
+        User upgradedUser = userRepository.findById(user.getId()).orElseThrow();
+        assertThat(upgradedUser.getPasswordHash()).startsWith("{argon2id}");
+        assertThat(passwordEncoder.matches(PASSWORD, upgradedUser.getPasswordHash())).isTrue();
     }
 
     @Test
