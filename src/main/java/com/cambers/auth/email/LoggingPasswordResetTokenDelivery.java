@@ -5,10 +5,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.UUID;
 
 @Component
 @Profile({"local", "test"})
@@ -23,15 +23,20 @@ public class LoggingPasswordResetTokenDelivery implements PasswordResetTokenDeli
     }
 
     @Override
-    public void deliver(String email, String rawToken, Instant expiresAt) {
-        log.debug("Password reset for {} expires at {}: {}", email, expiresAt, resetLink(rawToken));
+    public void deliver(String email, String rawToken, Instant expiresAt, UUID issuanceId) {
+        log.debug(
+                "Local password reset issuanceId={} expiresAt={} link={}",
+                issuanceId,
+                expiresAt,
+                resetLink(rawToken)
+        );
     }
 
     private String resetLink(String rawToken) {
-        String separator = properties.publicUrl().toString().contains("?") ? "&" : "?";
-        return properties.publicUrl()
-                + separator
-                + "token="
-                + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
+        return UriComponentsBuilder.fromUri(properties.publicUrl())
+                .queryParam("token", rawToken)
+                .build()
+                .encode()
+                .toUriString();
     }
 }
