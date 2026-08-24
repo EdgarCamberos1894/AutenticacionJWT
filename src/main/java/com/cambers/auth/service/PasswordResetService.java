@@ -89,7 +89,7 @@ public class PasswordResetService {
                 token.getId(),
                 now
         );
-        user.changePasswordHash(passwordEncoder.encode(newPassword));
+        user.changePasswordHash(passwordEncoder.encode(newPassword), now);
         sessionRevocationService.revokeAllForUser(userId, SessionRevocationReason.PASSWORD_RESET);
     }
 
@@ -103,6 +103,7 @@ public class PasswordResetService {
                 user,
                 TokenPurpose.RESET_PASSWORD,
                 generatedToken.hash(),
+                now,
                 expiresAt
         ));
 
