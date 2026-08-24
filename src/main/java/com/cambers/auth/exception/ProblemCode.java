@@ -20,6 +20,7 @@ public enum ProblemCode {
     RESOURCE_NOT_FOUND("RESOURCE_NOT_FOUND", "resource-not-found", "Resource not found"),
     CONFLICT("CONFLICT", "conflict", "Resource conflict"),
     METHOD_NOT_ALLOWED("METHOD_NOT_ALLOWED", "method-not-allowed", "Method not allowed"),
+    NOT_ACCEPTABLE("NOT_ACCEPTABLE", "not-acceptable", "Not acceptable"),
     UNSUPPORTED_MEDIA_TYPE("UNSUPPORTED_MEDIA_TYPE", "unsupported-media-type", "Unsupported media type"),
     RATE_LIMIT_EXCEEDED("RATE_LIMIT_EXCEEDED", "rate-limit-exceeded", "Too many requests"),
     SERVICE_UNAVAILABLE("SERVICE_UNAVAILABLE", "service-unavailable", "Service unavailable"),

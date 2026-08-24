@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Clock;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -35,7 +36,52 @@ class GlobalExceptionHandlerTests {
                 .andExpect(jsonPath("$.type").value("urn:cambers:problem:validation-error"))
                 .andExpect(jsonPath("$.status").value(422))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.timestamp").exists())
                 .andExpect(jsonPath("$.errors[0].pointer").value("#/name"));
+    }
+
+    @Test
+    void objectLevelValidationIncludesRootError() throws Exception {
+        mockMvc.perform(post("/contract/object-validation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"first\":\"a\",\"second\":\"b\"}"))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors[0].pointer").value("#"))
+                .andExpect(jsonPath("$.errors[0].detail").value("first and second must match"));
+    }
+
+    @Test
+    void methodParameterValidationUses422Contract() throws Exception {
+        mockMvc.perform(post("/contract/method-validation")
+                        .param("amount", "1"))
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(422))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors[0].pointer").value("#/amount"));
+    }
+
+    @Test
+    void inheritedMissingParameterProblemIsEnriched() throws Exception {
+        mockMvc.perform(post("/contract/required-parameter"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void inheritedNotAcceptableProblemIsEnriched() throws Exception {
+        mockMvc.perform(get("/contract/representation")
+                        .accept(MediaType.TEXT_PLAIN))
+                .andExpect(status().isNotAcceptable())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(406))
+                .andExpect(jsonPath("$.code").value("NOT_ACCEPTABLE"))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test

@@ -17,11 +17,13 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.time.Clock;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
@@ -77,22 +79,69 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status,
             WebRequest request) {
 
-        List<ValidationError> errors = exception.getBindingResult()
+        List<ValidationError> fieldErrors = exception.getBindingResult()
                 .getFieldErrors()
                 .stream()
-                .sorted(Comparator.comparing(error -> error.getField()))
                 .map(error -> new ValidationError(
-                        error.getDefaultMessage() == null ? "Invalid value" : error.getDefaultMessage(),
+                        message(error.getDefaultMessage()),
                         "#/" + error.getField().replace('.', '/')
                 ))
                 .toList();
 
-        ProblemDetail problem = problem(
-                HttpStatus.UNPROCESSABLE_CONTENT,
-                ProblemCode.VALIDATION_ERROR,
-                "One or more request fields are invalid."
-        );
-        problem.setProperty("errors", errors);
+        List<ValidationError> globalErrors = exception.getBindingResult()
+                .getGlobalErrors()
+                .stream()
+                .map(error -> new ValidationError(message(error.getDefaultMessage()), "#"))
+                .toList();
+
+        ProblemDetail problem = validationProblem(mergeValidationErrors(fieldErrors, globalErrors));
+        return handleExceptionInternal(exception, problem, headers, HttpStatus.UNPROCESSABLE_CONTENT, request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+            HandlerMethodValidationException exception,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
+
+        if (exception.isForReturnValue()) {
+            log.error("Controller return-value validation failed while processing {}", request.getDescription(false), exception);
+            ProblemDetail problem = problem(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    ProblemCode.INTERNAL_ERROR,
+                    "An unexpected error occurred."
+            );
+            return handleExceptionInternal(
+                    exception,
+                    problem,
+                    headers,
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    request
+            );
+        }
+
+        Stream<ValidationError> parameterErrors = exception.getParameterValidationResults()
+                .stream()
+                .flatMap(result -> {
+                    String parameterName = result.getMethodParameter().getParameterName();
+                    String pointer = parameterName == null || parameterName.isBlank()
+                            ? "#"
+                            : "#/" + parameterName;
+                    return result.getResolvableErrors()
+                            .stream()
+                            .map(error -> new ValidationError(message(error.getDefaultMessage()), pointer));
+                });
+
+        Stream<ValidationError> crossParameterErrors = exception.getCrossParameterValidationResults()
+                .stream()
+                .map(error -> new ValidationError(message(error.getDefaultMessage()), "#"));
+
+        List<ValidationError> errors = Stream.concat(parameterErrors, crossParameterErrors)
+                .sorted(validationErrorComparator())
+                .toList();
+
+        ProblemDetail problem = validationProblem(errors);
         return handleExceptionInternal(exception, problem, headers, HttpStatus.UNPROCESSABLE_CONTENT, request);
     }
 
@@ -139,22 +188,44 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
-    protected ResponseEntity<Object> handleExceptionInternal(
-            Exception exception,
+    protected ResponseEntity<Object> createResponseEntity(
             Object body,
             HttpHeaders headers,
             HttpStatusCode statusCode,
             WebRequest request) {
 
-        Object safeBody = body;
-        if (body instanceof ProblemDetail problem) {
-            ProblemCode code = codeFor(statusCode);
-            if (problem.getProperties() == null || !problem.getProperties().containsKey("code")) {
-                enrich(problem, code);
-            }
-            safeBody = problem;
+        if (body instanceof ProblemDetail problem
+                && (problem.getProperties() == null || !problem.getProperties().containsKey("code"))) {
+            enrich(problem, codeFor(statusCode));
         }
-        return super.handleExceptionInternal(exception, safeBody, headers, statusCode, request);
+        return super.createResponseEntity(body, headers, statusCode, request);
+    }
+
+    private ProblemDetail validationProblem(List<ValidationError> errors) {
+        ProblemDetail problem = problem(
+                HttpStatus.UNPROCESSABLE_CONTENT,
+                ProblemCode.VALIDATION_ERROR,
+                "One or more request fields are invalid."
+        );
+        problem.setProperty("errors", errors);
+        return problem;
+    }
+
+    private List<ValidationError> mergeValidationErrors(
+            List<ValidationError> fieldErrors,
+            List<ValidationError> globalErrors) {
+        return Stream.concat(fieldErrors.stream(), globalErrors.stream())
+                .sorted(validationErrorComparator())
+                .toList();
+    }
+
+    private Comparator<ValidationError> validationErrorComparator() {
+        return Comparator.comparing(ValidationError::pointer)
+                .thenComparing(ValidationError::detail);
+    }
+
+    private String message(String defaultMessage) {
+        return defaultMessage == null ? "Invalid value" : defaultMessage;
     }
 
     private ProblemDetail problem(HttpStatus status, ProblemCode code, String detail) {
@@ -177,12 +248,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             case 403 -> ProblemCode.ACCESS_DENIED;
             case 404 -> ProblemCode.RESOURCE_NOT_FOUND;
             case 405 -> ProblemCode.METHOD_NOT_ALLOWED;
+            case 406 -> ProblemCode.NOT_ACCEPTABLE;
             case 409 -> ProblemCode.CONFLICT;
             case 415 -> ProblemCode.UNSUPPORTED_MEDIA_TYPE;
             case 422 -> ProblemCode.VALIDATION_ERROR;
             case 429 -> ProblemCode.RATE_LIMIT_EXCEEDED;
             case 503 -> ProblemCode.SERVICE_UNAVAILABLE;
-            default -> ProblemCode.INTERNAL_ERROR;
+            default -> statusCode.is4xxClientError()
+                    ? ProblemCode.INVALID_REQUEST
+                    : ProblemCode.INTERNAL_ERROR;
         };
     }
 }

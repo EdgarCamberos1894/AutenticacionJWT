@@ -45,14 +45,17 @@ Errors use `Content-Type: application/problem+json`.
 | Authenticated but insufficient permission | `403 Forbidden` |
 | Resource not found | `404 Not Found` |
 | HTTP method not supported | `405 Method Not Allowed` |
+| Requested response representation is not acceptable | `406 Not Acceptable` |
 | Current resource state conflicts with request | `409 Conflict` |
 | Unsupported request content type | `415 Unsupported Media Type` |
-| Syntactically valid request with invalid fields/instructions | `422 Unprocessable Content` |
+| Syntactically valid request with invalid body fields, object constraints or method parameters | `422 Unprocessable Content` |
 | Rate limit exceeded | `429 Too Many Requests` |
-| Unexpected server failure | `500 Internal Server Error` |
+| Unexpected server failure or invalid controller return value | `500 Internal Server Error` |
 | Required rate-limit backend unavailable | `503 Service Unavailable` |
 
 Authentication failures include `WWW-Authenticate: Bearer` where applicable. Rate-limit responses include `Retry-After`.
+
+Spring MVC errors handled by the framework itself are enriched at the final response-entity boundary so RFC 9457 responses retain the same stable `code` and `timestamp` extensions as application-generated problems.
 
 ## Problem Details shape
 
@@ -76,7 +79,7 @@ Authentication failures include `WWW-Authenticate: Bearer` where applicable. Rat
 
 `code`, not `detail`, is the stable machine-readable extension. Clients must not branch on human-readable text.
 
-Validation failures may expose an `errors` extension with JSON-pointer-like field locations. Internal exception messages and stack traces are not part of the public response contract.
+Validation failures may expose an `errors` extension with JSON-pointer-like locations. Field and method-parameter violations use a field/parameter pointer when available; object-level and cross-parameter violations use the root pointer `#`. Internal exception messages and stack traces are not part of the public response contract.
 
 ## Token response contract
 
