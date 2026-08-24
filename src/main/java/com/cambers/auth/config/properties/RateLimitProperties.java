@@ -14,6 +14,7 @@ public record RateLimitProperties(
         boolean enabled,
         @NotNull @Valid Policy register,
         @NotNull @Valid Policy login,
+        @NotNull @Valid Policy loginAccount,
         @NotNull @Valid Policy refresh,
         @NotNull @Valid Policy emailVerification,
         @NotNull @Valid Policy emailVerificationConfirm,
