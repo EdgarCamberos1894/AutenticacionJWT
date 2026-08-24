@@ -24,6 +24,8 @@ security:
   one-time-tokens:
     email-verification-ttl: ${EMAIL_VERIFICATION_TTL:PT30M}
     password-reset-ttl: ${PASSWORD_RESET_TTL:PT15M}
+  client-ip:
+    trusted-proxy-addresses: ${TRUSTED_PROXY_ADDRESSES:}
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED:true}
     register:
