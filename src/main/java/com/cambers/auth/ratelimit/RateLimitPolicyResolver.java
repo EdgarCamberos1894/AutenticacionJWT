@@ -1,11 +1,9 @@
 package com.cambers.auth.ratelimit;
 
 import com.cambers.auth.config.properties.RateLimitProperties;
-import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
-@Component
 public class RateLimitPolicyResolver {
 
     private final RateLimitProperties properties;
@@ -14,8 +12,8 @@ public class RateLimitPolicyResolver {
         this.properties = properties;
     }
 
-    public Optional<NamedPolicy> resolve(String servletPath) {
-        return switch (servletPath) {
+    public Optional<NamedPolicy> resolve(String requestPath) {
+        return switch (requestPath) {
             case "/api/v1/auth/register" -> named("register", properties.register());
             case "/api/v1/auth/login" -> named("login", properties.login());
             case "/api/v1/auth/refresh" -> named("refresh", properties.refresh());
