@@ -13,6 +13,10 @@ spring:
   flyway:
     enabled: true
 
+security:
+  jwt:
+    access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT10M}
+
 server:
   shutdown: graceful
 

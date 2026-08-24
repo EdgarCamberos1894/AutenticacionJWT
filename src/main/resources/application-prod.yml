@@ -6,6 +6,14 @@ spring:
   jpa:
     show-sql: false
 
+security:
+  jwt:
+    issuer: ${JWT_ISSUER}
+    audience: ${JWT_AUDIENCE}
+    keys:
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
+      private-key-location: ${JWT_PRIVATE_KEY_LOCATION}
+
 logging:
   level:
     root: INFO

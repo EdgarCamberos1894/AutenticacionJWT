@@ -6,6 +6,11 @@ spring:
   jpa:
     show-sql: false
 
+security:
+  jwt:
+    issuer: ${JWT_ISSUER:http://localhost:8080}
+    audience: ${JWT_AUDIENCE:authentication-api}
+
 logging:
   level:
     org.springframework.security: INFO
