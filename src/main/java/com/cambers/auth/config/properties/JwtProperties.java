@@ -16,6 +16,12 @@ public record JwtProperties(
         @NotNull Duration accessTokenTtl,
         @Valid Keys keys
 ) {
+    public JwtProperties {
+        if (accessTokenTtl != null && (accessTokenTtl.isZero() || accessTokenTtl.isNegative())) {
+            throw new IllegalArgumentException("security.jwt.access-token-ttl must be positive");
+        }
+    }
+
     public record Keys(String publicKeyLocation, String privateKeyLocation) {
     }
 }
