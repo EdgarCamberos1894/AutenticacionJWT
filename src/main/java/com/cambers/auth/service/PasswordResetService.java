@@ -3,6 +3,7 @@ package com.cambers.auth.service;
 import com.cambers.auth.config.properties.OneTimeTokenProperties;
 import com.cambers.auth.email.PasswordResetTokenIssuedEvent;
 import com.cambers.auth.entity.OneTimeToken;
+import com.cambers.auth.entity.SessionRevocationReason;
 import com.cambers.auth.entity.User;
 import com.cambers.auth.enums.TokenPurpose;
 import com.cambers.auth.exception.BadRequestException;
@@ -29,7 +30,7 @@ public class PasswordResetService {
     private final SecureOpaqueTokenGenerator tokenGenerator;
     private final OneTimeTokenProperties properties;
     private final PasswordEncoder passwordEncoder;
-    private final SessionManagementService sessionManagementService;
+    private final SessionRevocationService sessionRevocationService;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
@@ -39,7 +40,7 @@ public class PasswordResetService {
             SecureOpaqueTokenGenerator tokenGenerator,
             OneTimeTokenProperties properties,
             PasswordEncoder passwordEncoder,
-            SessionManagementService sessionManagementService,
+            SessionRevocationService sessionRevocationService,
             ApplicationEventPublisher eventPublisher,
             Clock clock) {
         this.oneTimeTokenRepository = oneTimeTokenRepository;
@@ -47,7 +48,7 @@ public class PasswordResetService {
         this.tokenGenerator = tokenGenerator;
         this.properties = properties;
         this.passwordEncoder = passwordEncoder;
-        this.sessionManagementService = sessionManagementService;
+        this.sessionRevocationService = sessionRevocationService;
         this.eventPublisher = eventPublisher;
         this.clock = clock;
     }
@@ -87,7 +88,7 @@ public class PasswordResetService {
                 now
         );
         user.setPasswordHash(passwordEncoder.encode(newPassword));
-        sessionManagementService.revokeAllForPasswordReset(userId);
+        sessionRevocationService.revokeAllForUser(userId, SessionRevocationReason.PASSWORD_RESET);
     }
 
     private void issueResetTokenForLockedUser(User user) {
