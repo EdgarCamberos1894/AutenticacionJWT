@@ -10,6 +10,7 @@ import com.cambers.auth.dto.RegisterRequest;
 import com.cambers.auth.dto.RegistrationResponse;
 import com.cambers.auth.dto.SessionResponse;
 import com.cambers.auth.dto.TokenResponse;
+import com.cambers.auth.ratelimit.ClientIpResolver;
 import com.cambers.auth.service.AuthenticationService;
 import com.cambers.auth.service.ClientMetadata;
 import com.cambers.auth.service.EmailVerificationService;
@@ -44,18 +45,21 @@ public class AuthController {
     private final EmailVerificationService emailVerificationService;
     private final PasswordResetService passwordResetService;
     private final SessionManagementService sessionManagementService;
+    private final ClientIpResolver clientIpResolver;
 
     public AuthController(
             AuthenticationService authenticationService,
             RegistrationService registrationService,
             EmailVerificationService emailVerificationService,
             PasswordResetService passwordResetService,
-            SessionManagementService sessionManagementService) {
+            SessionManagementService sessionManagementService,
+            ClientIpResolver clientIpResolver) {
         this.authenticationService = authenticationService;
         this.registrationService = registrationService;
         this.emailVerificationService = emailVerificationService;
         this.passwordResetService = passwordResetService;
         this.sessionManagementService = sessionManagementService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @PostMapping(path = "/register", consumes = "application/json", produces = "application/json")
@@ -70,7 +74,7 @@ public class AuthController {
             HttpServletRequest servletRequest) {
         ClientMetadata clientMetadata = new ClientMetadata(
                 servletRequest.getHeader(HttpHeaders.USER_AGENT),
-                servletRequest.getRemoteAddr()
+                clientIpResolver.resolve(servletRequest)
         );
         return tokenResponse(authenticationService.login(request, clientMetadata));
     }
