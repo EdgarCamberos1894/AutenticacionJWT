@@ -17,6 +17,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -132,7 +133,7 @@ public class ResendTransactionalEmailSender implements TransactionalEmailSender 
     private ResendErrorResponse readError(RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse response) {
         try {
             return response.bodyTo(ResendErrorResponse.class);
-        } catch (RestClientException exception) {
+        } catch (IOException | RestClientException exception) {
             log.warn("Could not decode Resend error response status={}", response.getStatusCode().value());
             return null;
         }
