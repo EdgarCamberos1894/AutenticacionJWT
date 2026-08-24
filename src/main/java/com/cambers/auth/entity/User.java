@@ -11,8 +11,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
@@ -62,21 +60,11 @@ public class User {
     protected User() {
     }
 
-    public User(String email, String passwordHash) {
+    public User(String email, String passwordHash, Instant createdAt) {
         this.email = Objects.requireNonNull(email, "email must not be null");
         this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash must not be null");
-    }
-
-    @PrePersist
-    void onCreate() {
-        Instant now = Instant.now();
-        createdAt = now;
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = Instant.now();
+        this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
+        this.updatedAt = createdAt;
     }
 
     public UUID getId() {
@@ -91,8 +79,9 @@ public class User {
         return passwordHash;
     }
 
-    public void changePasswordHash(String passwordHash) {
+    public void changePasswordHash(String passwordHash, Instant changedAt) {
         this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash must not be null");
+        this.updatedAt = Objects.requireNonNull(changedAt, "changedAt must not be null");
     }
 
     public AccountStatus getStatus() {
@@ -121,6 +110,7 @@ public class User {
         }
         emailVerifiedAt = verifiedAt;
         status = AccountStatus.ACTIVE;
+        updatedAt = verifiedAt;
     }
 
     public Instant getCreatedAt() {
@@ -135,7 +125,11 @@ public class User {
         return Set.copyOf(roles);
     }
 
-    public void assignRole(RoleName role) {
-        roles.add(Objects.requireNonNull(role, "role must not be null"));
+    public void assignRole(RoleName role, Instant changedAt) {
+        Objects.requireNonNull(role, "role must not be null");
+        Objects.requireNonNull(changedAt, "changedAt must not be null");
+        if (roles.add(role)) {
+            updatedAt = changedAt;
+        }
     }
 }
