@@ -52,6 +52,7 @@ public class TokenPairIssuer {
                 session,
                 parentToken,
                 generatedRefreshToken.hash(),
+                now,
                 refreshExpiresAt
         );
         refreshTokenRepository.save(refreshToken);
