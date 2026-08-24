@@ -1,13 +1,11 @@
 package com.cambers.auth;
 
 import com.cambers.auth.entity.AuthSession;
-import com.cambers.auth.entity.Role;
+import com.cambers.auth.entity.RoleName;
 import com.cambers.auth.entity.SessionRevocationReason;
 import com.cambers.auth.entity.User;
-import com.cambers.auth.enums.RoleName;
 import com.cambers.auth.repository.AuthSessionRepository;
 import com.cambers.auth.repository.RefreshTokenRepository;
-import com.cambers.auth.repository.RoleRepository;
 import com.cambers.auth.repository.UserRepository;
 import com.cambers.auth.security.refresh.RefreshTokenGenerator;
 import com.jayway.jsonpath.JsonPath;
@@ -60,9 +58,6 @@ class AuthenticationFlowTests {
 
     @Autowired
     private UserRepository userRepository;
-
-    @Autowired
-    private RoleRepository roleRepository;
 
     @Autowired
     private AuthSessionRepository authSessionRepository;
@@ -255,10 +250,9 @@ class AuthenticationFlowTests {
     }
 
     private User createUser(String email) {
-        Role userRole = roleRepository.findById(RoleName.USER).orElseThrow();
         User user = new User(email, passwordEncoder.encode(PASSWORD));
         user.verifyEmail(Instant.now());
-        user.addRole(userRole);
+        user.assignRole(RoleName.USER);
         return userRepository.saveAndFlush(user);
     }
 
