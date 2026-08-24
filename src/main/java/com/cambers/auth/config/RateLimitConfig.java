@@ -2,8 +2,12 @@ package com.cambers.auth.config;
 
 import com.cambers.auth.config.properties.RateLimitProperties;
 import com.cambers.auth.ratelimit.RateLimitInterceptor;
+import com.cambers.auth.ratelimit.RateLimitPolicyResolver;
+import com.cambers.auth.ratelimit.RequestRateLimiter;
+import com.cambers.auth.security.SecurityProblemWriter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -17,6 +21,19 @@ public class RateLimitConfig implements WebMvcConfigurer {
 
     public RateLimitConfig(RateLimitInterceptor rateLimitInterceptor) {
         this.rateLimitInterceptor = rateLimitInterceptor;
+    }
+
+    @Bean
+    RateLimitPolicyResolver rateLimitPolicyResolver(RateLimitProperties properties) {
+        return new RateLimitPolicyResolver(properties);
+    }
+
+    @Bean
+    RateLimitInterceptor rateLimitInterceptor(
+            RateLimitPolicyResolver policyResolver,
+            RequestRateLimiter requestRateLimiter,
+            SecurityProblemWriter problemWriter) {
+        return new RateLimitInterceptor(policyResolver, requestRateLimiter, problemWriter);
     }
 
     @Override
