@@ -64,6 +64,8 @@ Issuing/resending a token locks the user row, invalidates previously active toke
 
 Verification/resend responses are generic where account discovery would otherwise leak information. Email delivery is triggered after the database transaction commits, so a delivery failure does not roll back a successfully persisted account or token lifecycle change.
 
+Production SMTP requires STARTTLS by default and uses bounded connection/read/write timeouts, preventing a missing TLS capability from silently downgrading delivery and preventing an unavailable SMTP server from blocking a request thread indefinitely.
+
 ### Password recovery
 
 Password-reset requests use the same one-time, hash-only token model with a default lifetime of 15 minutes and generic outward-facing behavior for unknown accounts.
@@ -188,6 +190,10 @@ Core environment variables:
 | `MAIL_PASSWORD` | none | required by the current SMTP production configuration |
 | `MAIL_SMTP_AUTH` | `true` | optional |
 | `MAIL_STARTTLS` | `true` | optional |
+| `MAIL_STARTTLS_REQUIRED` | `true` | optional; keep enabled for authenticated SMTP |
+| `MAIL_CONNECTION_TIMEOUT_MS` | `5000` | optional |
+| `MAIL_READ_TIMEOUT_MS` | `5000` | optional |
+| `MAIL_WRITE_TIMEOUT_MS` | `5000` | optional |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` in `local`; empty otherwise | set explicit browser origins when cross-origin access is required |
 | `TRUSTED_PROXY_ADDRESSES` | empty | configure only known proxy/load-balancer addresses |
 | `RATE_LIMIT_ENABLED` | `true` | optional |
@@ -210,7 +216,7 @@ GitHub Actions runs Maven verification and builds the application container imag
 
 ## Security boundaries and future extensions
 
-This template intentionally does not yet implement MFA/passkeys, social/OIDC login, device attestation, guaranteed email delivery through an outbox/queue, or immediate per-request revocation checks for already-issued access JWTs.
+This template intentionally does not yet implement MFA/passkeys, social/OIDC login, device attestation, guaranteed email delivery through an outbox/queue, key-ring/JWK-based signing-key rotation, or immediate per-request revocation checks for already-issued access JWTs.
 
 Generic recovery responses reduce direct account enumeration but do not attempt artificial response-time equalization; a production system with stricter anti-enumeration requirements should move delivery behind a durable asynchronous boundary rather than adding sleeps to request threads.
 
