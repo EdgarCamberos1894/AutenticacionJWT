@@ -1,7 +1,8 @@
 package com.cambers.auth.entity;
 
-import com.cambers.auth.enums.AccountStatus;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -10,8 +11,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -54,13 +53,11 @@ public class User {
     @Column(nullable = false)
     private long version;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_name")
-    )
-    private Set<Role> roles = new HashSet<>();
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role_name", length = 50, nullable = false)
+    private Set<RoleName> roles = new HashSet<>();
 
     protected User() {
     }
@@ -134,11 +131,11 @@ public class User {
         return updatedAt;
     }
 
-    public Set<Role> getRoles() {
+    public Set<RoleName> getRoles() {
         return Set.copyOf(roles);
     }
 
-    public void addRole(Role role) {
+    public void assignRole(RoleName role) {
         roles.add(Objects.requireNonNull(role, "role must not be null"));
     }
 }
