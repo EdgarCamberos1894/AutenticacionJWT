@@ -16,6 +16,9 @@ spring:
 security:
   jwt:
     access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT10M}
+  sessions:
+    session-ttl: ${AUTH_SESSION_TTL:P30D}
+    refresh-token-ttl: ${AUTH_REFRESH_TOKEN_TTL:P7D}
 
 server:
   shutdown: graceful
