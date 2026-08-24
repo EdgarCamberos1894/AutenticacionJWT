@@ -4,6 +4,7 @@ import com.cambers.auth.exception.ProblemCode;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -26,6 +27,7 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
             HttpServletResponse response,
             AuthenticationException authenticationException) throws IOException, ServletException {
 
+        response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         problemWriter.write(
                 request,
                 response,

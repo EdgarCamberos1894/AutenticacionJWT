@@ -25,10 +25,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Object> handleApiException(ApiException exception, WebRequest request) {
         ProblemDetail problem = problem(exception.status(), exception.code(), exception.getMessage());
+        HttpHeaders headers = new HttpHeaders();
+        if (exception.status() == HttpStatus.UNAUTHORIZED) {
+            headers.set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
+        }
         return handleExceptionInternal(
                 exception,
                 problem,
-                HttpHeaders.EMPTY,
+                headers,
                 exception.status(),
                 request
         );
