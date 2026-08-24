@@ -2,6 +2,7 @@ package com.cambers.auth;
 
 import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.Role;
+import com.cambers.auth.entity.SessionRevocationReason;
 import com.cambers.auth.entity.User;
 import com.cambers.auth.enums.RoleName;
 import com.cambers.auth.repository.AuthSessionRepository;
@@ -9,7 +10,6 @@ import com.cambers.auth.repository.RefreshTokenRepository;
 import com.cambers.auth.repository.RoleRepository;
 import com.cambers.auth.repository.UserRepository;
 import com.cambers.auth.security.refresh.RefreshTokenGenerator;
-import com.cambers.auth.service.SessionRevocationService;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -138,8 +138,7 @@ class AuthenticationFlowTests {
 
         AuthSession revokedSession = authSessionRepository.findById(sessionId).orElseThrow();
         assertThat(revokedSession.isRevoked()).isTrue();
-        assertThat(revokedSession.getRevokeReason())
-                .isEqualTo(SessionRevocationService.REFRESH_TOKEN_REUSE_REASON);
+        assertThat(revokedSession.getRevocationReason()).isEqualTo(SessionRevocationReason.REFRESH_TOKEN_REUSE);
         assertThat(refreshTokenRepository.findAll()).allSatisfy(token -> assertThat(token.isRevoked()).isTrue());
 
         assertInvalidRefresh(secondRefreshToken);
