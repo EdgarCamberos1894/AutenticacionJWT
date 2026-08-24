@@ -107,6 +107,7 @@ class RegistrationFlowTests {
                 user,
                 TokenPurpose.VERIFY_EMAIL,
                 verificationToken.hash(),
+                now,
                 now.plusSeconds(300)
         ));
 
