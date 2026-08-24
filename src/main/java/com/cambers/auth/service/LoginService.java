@@ -69,13 +69,15 @@ public class LoginService {
             throw invalidCredentials();
         }
 
+        Instant now = clock.instant();
         if (passwordEncoder.upgradeEncoding(user.getPasswordHash())) {
-            user.changePasswordHash(passwordEncoder.encode(request.password()));
+            user.changePasswordHash(passwordEncoder.encode(request.password()), now);
         }
 
-        Instant sessionExpiresAt = clock.instant().plus(sessionProperties.sessionTtl());
+        Instant sessionExpiresAt = now.plus(sessionProperties.sessionTtl());
         AuthSession session = authSessionRepository.save(new AuthSession(
                 user,
+                now,
                 sessionExpiresAt,
                 clientMetadata.userAgent(),
                 clientMetadata.ipAddress()
