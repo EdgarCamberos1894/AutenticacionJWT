@@ -1,9 +1,9 @@
 package com.cambers.auth;
 
+import com.cambers.auth.entity.AccountStatus;
 import com.cambers.auth.entity.OneTimeToken;
+import com.cambers.auth.entity.TokenPurpose;
 import com.cambers.auth.entity.User;
-import com.cambers.auth.enums.AccountStatus;
-import com.cambers.auth.enums.TokenPurpose;
 import com.cambers.auth.repository.AuthSessionRepository;
 import com.cambers.auth.repository.OneTimeTokenRepository;
 import com.cambers.auth.repository.RefreshTokenRepository;
