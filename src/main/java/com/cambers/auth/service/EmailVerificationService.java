@@ -107,6 +107,7 @@ public class EmailVerificationService {
                 user,
                 TokenPurpose.VERIFY_EMAIL,
                 generatedToken.hash(),
+                now,
                 expiresAt
         ));
 
