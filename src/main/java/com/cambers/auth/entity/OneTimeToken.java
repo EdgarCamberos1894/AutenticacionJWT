@@ -15,6 +15,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -45,14 +46,17 @@ public class OneTimeToken {
     @Column(name = "consumed_at")
     private Instant consumedAt;
 
+    @Column(name = "invalidated_at")
+    private Instant invalidatedAt;
+
     protected OneTimeToken() {
     }
 
     public OneTimeToken(User user, TokenPurpose purpose, String tokenHash, Instant expiresAt) {
-        this.user = user;
-        this.purpose = purpose;
-        this.tokenHash = tokenHash;
-        this.expiresAt = expiresAt;
+        this.user = Objects.requireNonNull(user, "user must not be null");
+        this.purpose = Objects.requireNonNull(purpose, "purpose must not be null");
+        this.tokenHash = Objects.requireNonNull(tokenHash, "tokenHash must not be null");
+        this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt must not be null");
     }
 
     @PrePersist
@@ -84,15 +88,31 @@ public class OneTimeToken {
         return consumedAt;
     }
 
+    public Instant getInvalidatedAt() {
+        return invalidatedAt;
+    }
+
     public boolean isConsumed() {
         return consumedAt != null;
+    }
+
+    public boolean isInvalidated() {
+        return invalidatedAt != null;
     }
 
     public boolean isExpired(Instant now) {
         return !expiresAt.isAfter(now);
     }
 
+    public boolean isUsableAt(Instant now) {
+        return !isConsumed() && !isInvalidated() && !isExpired(now);
+    }
+
     public void consume(Instant now) {
+        Objects.requireNonNull(now, "now must not be null");
+        if (isConsumed() || isInvalidated()) {
+            throw new IllegalStateException("Only an active one-time token can be consumed");
+        }
         consumedAt = now;
     }
 }
