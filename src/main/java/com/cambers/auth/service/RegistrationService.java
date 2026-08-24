@@ -11,6 +11,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
+
 @Service
 public class RegistrationService {
 
@@ -18,16 +21,19 @@ public class RegistrationService {
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationService emailVerificationService;
     private final EmailNormalizer emailNormalizer;
+    private final Clock clock;
 
     public RegistrationService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             EmailVerificationService emailVerificationService,
-            EmailNormalizer emailNormalizer) {
+            EmailNormalizer emailNormalizer,
+            Clock clock) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailVerificationService = emailVerificationService;
         this.emailNormalizer = emailNormalizer;
+        this.clock = clock;
     }
 
     @Transactional
@@ -37,8 +43,9 @@ public class RegistrationService {
             throw new EmailAlreadyRegisteredException();
         }
 
-        User user = new User(normalizedEmail, passwordEncoder.encode(request.password()));
-        user.assignRole(RoleName.USER);
+        Instant now = clock.instant();
+        User user = new User(normalizedEmail, passwordEncoder.encode(request.password()), now);
+        user.assignRole(RoleName.USER, now);
 
         try {
             userRepository.saveAndFlush(user);
