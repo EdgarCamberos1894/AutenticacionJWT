@@ -3,7 +3,6 @@ package com.cambers.auth;
 import com.cambers.auth.entity.OneTimeToken;
 import com.cambers.auth.entity.Role;
 import com.cambers.auth.entity.User;
-import com.cambers.auth.enums.AccountStatus;
 import com.cambers.auth.enums.RoleName;
 import com.cambers.auth.enums.TokenPurpose;
 import com.cambers.auth.repository.AuthSessionRepository;
@@ -88,19 +87,20 @@ class PasswordResetFlowTests {
         mockMvc.perform(post("/api/v1/auth/password-reset")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(emailBody(EMAIL)))
-                .andExpect(status().isAccepted())
+                .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
         mockMvc.perform(post("/api/v1/auth/password-reset")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(emailBody("unknown@example.com")))
-                .andExpect(status().isAccepted())
+                .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
         assertThat(oneTimeTokenRepository.findAll()).singleElement().satisfies(token -> {
             assertThat(token.getPurpose()).isEqualTo(TokenPurpose.RESET_PASSWORD);
             assertThat(token.getTokenHash()).hasSize(64);
             assertThat(token.isConsumed()).isFalse();
+            assertThat(token.isInvalidated()).isFalse();
         });
     }
 
@@ -177,7 +177,6 @@ class PasswordResetFlowTests {
     private User createVerifiedUser() {
         Role userRole = roleRepository.findById(RoleName.USER).orElseThrow();
         User user = new User(EMAIL, passwordEncoder.encode(OLD_PASSWORD));
-        user.setStatus(AccountStatus.ACTIVE);
         user.verifyEmail(Instant.now());
         user.addRole(userRole);
         return userRepository.saveAndFlush(user);
