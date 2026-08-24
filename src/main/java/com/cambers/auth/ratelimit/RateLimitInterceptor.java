@@ -13,14 +13,17 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     private final RateLimitPolicyResolver policyResolver;
     private final RequestRateLimiter requestRateLimiter;
+    private final ClientIpResolver clientIpResolver;
     private final SecurityProblemWriter problemWriter;
 
     public RateLimitInterceptor(
             RateLimitPolicyResolver policyResolver,
             RequestRateLimiter requestRateLimiter,
+            ClientIpResolver clientIpResolver,
             SecurityProblemWriter problemWriter) {
         this.policyResolver = policyResolver;
         this.requestRateLimiter = requestRateLimiter;
+        this.clientIpResolver = clientIpResolver;
         this.problemWriter = problemWriter;
     }
 
@@ -43,7 +46,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         try {
             RateLimitDecision decision = requestRateLimiter.consume(
                     namedPolicy.name(),
-                    clientIdentifier(request),
+                    clientIpResolver.resolve(request),
                     namedPolicy.policy()
             );
             if (decision.allowed()) {
@@ -80,10 +83,5 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return requestUri.substring(contextPath.length());
         }
         return requestUri;
-    }
-
-    private String clientIdentifier(HttpServletRequest request) {
-        String remoteAddress = request.getRemoteAddr();
-        return remoteAddress == null || remoteAddress.isBlank() ? "unknown" : remoteAddress;
     }
 }
