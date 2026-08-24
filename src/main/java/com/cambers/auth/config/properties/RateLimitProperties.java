@@ -12,13 +12,13 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "security.rate-limit")
 public record RateLimitProperties(
         boolean enabled,
-        @Valid Policy register,
-        @Valid Policy login,
-        @Valid Policy refresh,
-        @Valid Policy emailVerification,
-        @Valid Policy emailVerificationConfirm,
-        @Valid Policy passwordReset,
-        @Valid Policy passwordResetConfirm
+        @NotNull @Valid Policy register,
+        @NotNull @Valid Policy login,
+        @NotNull @Valid Policy refresh,
+        @NotNull @Valid Policy emailVerification,
+        @NotNull @Valid Policy emailVerificationConfirm,
+        @NotNull @Valid Policy passwordReset,
+        @NotNull @Valid Policy passwordResetConfirm
 ) {
     public record Policy(@Min(1) int limit, @NotNull Duration window) {
         public Policy {

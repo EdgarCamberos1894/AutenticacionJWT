@@ -2,7 +2,6 @@ package com.cambers.auth.ratelimit;
 
 import com.cambers.auth.config.properties.RateLimitProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -55,15 +54,9 @@ public class RedisRequestRateLimiter implements RequestRateLimiter {
 
             Long ttlMillis = redisTemplate.getExpire(key, TimeUnit.MILLISECONDS);
             long effectiveTtl = ttlMillis == null || ttlMillis <= 0 ? windowMillis : ttlMillis;
-            long retryAfterSeconds = (effectiveTtl + 999) / 1000;
-            return RateLimitDecision.reject(retryAfterSeconds);
-        } catch (DataAccessException exception) {
-            throw new RateLimitBackendUnavailableException(exception);
+            return RateLimitDecision.reject((effectiveTtl + 999) / 1000);
         } catch (RuntimeException exception) {
-            if (exception instanceof RateLimitBackendUnavailableException backendUnavailableException) {
-                throw backendUnavailableException;
-            }
-            throw new IllegalStateException("Unexpected Redis rate-limit response", exception);
+            throw new RateLimitBackendUnavailableException(exception);
         }
     }
 
