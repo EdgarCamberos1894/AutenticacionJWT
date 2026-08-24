@@ -3,8 +3,44 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+  data:
+    redis:
+      url: ${REDIS_URL}
   jpa:
     show-sql: false
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_STARTTLS:true}
+            required: ${MAIL_STARTTLS_REQUIRED:true}
+          ssl:
+            checkserveridentity: true
+          connectiontimeout: ${MAIL_CONNECTION_TIMEOUT_MS:5000}
+          timeout: ${MAIL_READ_TIMEOUT_MS:5000}
+          writetimeout: ${MAIL_WRITE_TIMEOUT_MS:5000}
+
+security:
+  jwt:
+    issuer: ${JWT_ISSUER}
+    audience: ${JWT_AUDIENCE}
+    keys:
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
+      private-key-location: ${JWT_PRIVATE_KEY_LOCATION}
+
+auth:
+  mail:
+    from: ${MAIL_FROM}
+  email-verification:
+    public-url: ${VERIFICATION_PUBLIC_URL}
+  password-reset:
+    public-url: ${PASSWORD_RESET_PUBLIC_URL}
 
 logging:
   level:
