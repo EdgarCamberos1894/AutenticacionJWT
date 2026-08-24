@@ -5,7 +5,6 @@ import com.cambers.auth.dto.LoginRequest;
 import com.cambers.auth.dto.TokenResponse;
 import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.User;
-import com.cambers.auth.enums.AccountStatus;
 import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.exception.UnauthorizedException;
 import com.cambers.auth.repository.AuthSessionRepository;
@@ -59,7 +58,7 @@ public class LoginService {
             throw invalidCredentials();
         }
 
-        if (user.getStatus() != AccountStatus.ACTIVE) {
+        if (!user.isAuthenticationAllowed()) {
             throw invalidCredentials();
         }
 
