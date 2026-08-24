@@ -89,6 +89,7 @@ class RegistrationFlowTests {
             assertThat(token.getPurpose()).isEqualTo(TokenPurpose.VERIFY_EMAIL);
             assertThat(token.getTokenHash()).hasSize(64);
             assertThat(token.isConsumed()).isFalse();
+            assertThat(token.isInvalidated()).isFalse();
         });
 
         assertInvalidCredentials(EMAIL, PASSWORD);
@@ -98,13 +99,15 @@ class RegistrationFlowTests {
     void verificationActivatesAccountAndAllowsLogin() throws Exception {
         register();
         User user = userRepository.findByEmailIgnoreCase(EMAIL).orElseThrow();
+        Instant now = Instant.now();
+        oneTimeTokenRepository.invalidateActiveTokens(user.getId(), TokenPurpose.VERIFY_EMAIL, now);
 
         GeneratedOpaqueToken verificationToken = opaqueTokenGenerator.generate();
-        oneTimeTokenRepository.saveAndFlush(new OneTimeToken(
+        OneTimeToken confirmableToken = oneTimeTokenRepository.saveAndFlush(new OneTimeToken(
                 user,
                 TokenPurpose.VERIFY_EMAIL,
                 verificationToken.hash(),
-                Instant.now().plusSeconds(300)
+                now.plusSeconds(300)
         ));
 
         mockMvc.perform(post("/api/v1/auth/email-verification/confirm")
@@ -116,8 +119,7 @@ class RegistrationFlowTests {
         User verifiedUser = userRepository.findById(user.getId()).orElseThrow();
         assertThat(verifiedUser.isEmailVerified()).isTrue();
         assertThat(verifiedUser.getStatus()).isEqualTo(AccountStatus.ACTIVE);
-        assertThat(oneTimeTokenRepository.findAll())
-                .allSatisfy(token -> assertThat(token.isConsumed()).isTrue());
+        assertThat(oneTimeTokenRepository.findById(confirmableToken.getId()).orElseThrow().isConsumed()).isTrue();
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -145,18 +147,18 @@ class RegistrationFlowTests {
         mockMvc.perform(post("/api/v1/auth/email-verification")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(emailBody(EMAIL)))
-                .andExpect(status().isAccepted())
+                .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
         mockMvc.perform(post("/api/v1/auth/email-verification")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(emailBody("unknown@example.com")))
-                .andExpect(status().isAccepted())
+                .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
-        assertThat(oneTimeTokenRepository.findById(original.getId()).orElseThrow().isConsumed()).isTrue();
+        assertThat(oneTimeTokenRepository.findById(original.getId()).orElseThrow().isInvalidated()).isTrue();
         assertThat(oneTimeTokenRepository.findAll().stream()
-                .filter(token -> !token.isConsumed())
+                .filter(token -> !token.isConsumed() && !token.isInvalidated())
                 .count()).isEqualTo(1);
     }
 
