@@ -10,38 +10,46 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @ConditionalOnProperty(prefix = "security.rate-limit", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RedisRequestRateLimiter implements RequestRateLimiter {
 
-    private static final String KEY_PREFIX = "auth:rate-limit:v1:";
+    // v2 intentionally separates sorted-set sliding-window keys from the previous string-counter format.
+    private static final String KEY_PREFIX = "auth:rate-limit:v2:";
 
     /**
-     * Fixed-window limiter executed atomically by Redis.
+     * Sliding-window limiter executed atomically by Redis.
      *
      * A positive result means the request is allowed. A negative result encodes
-     * the remaining window TTL in milliseconds for a rejected request.
+     * the number of milliseconds until the oldest counted request leaves the window.
      */
     private static final DefaultRedisScript<Long> CONSUME_SCRIPT = new DefaultRedisScript<>("""
             local limit = tonumber(ARGV[1])
             local window = tonumber(ARGV[2])
-            local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+            local member = ARGV[3]
+
+            local redis_time = redis.call('TIME')
+            local now = (tonumber(redis_time[1]) * 1000) + math.floor(tonumber(redis_time[2]) / 1000)
+            local cutoff = now - window
+
+            redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', cutoff)
+            local current = redis.call('ZCARD', KEYS[1])
 
             if current >= limit then
-                local ttl = redis.call('PTTL', KEYS[1])
-                if ttl <= 0 then
-                    ttl = window
-                    redis.call('PEXPIRE', KEYS[1], window)
+                local oldest = redis.call('ZRANGE', KEYS[1], 0, 0, 'WITHSCORES')
+                local retry_after = window
+                if oldest[2] ~= nil then
+                    retry_after = math.max(window - (now - tonumber(oldest[2])), 1)
                 end
-                return -math.max(ttl, 1)
+                redis.call('PEXPIRE', KEYS[1], window)
+                return -retry_after
             end
 
-            local next = redis.call('INCR', KEYS[1])
-            if next == 1 then
-                redis.call('PEXPIRE', KEYS[1], window)
-            end
-            return next
+            redis.call('ZADD', KEYS[1], now, member)
+            redis.call('PEXPIRE', KEYS[1], window)
+            return current + 1
             """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
@@ -64,7 +72,8 @@ public class RedisRequestRateLimiter implements RequestRateLimiter {
                     CONSUME_SCRIPT,
                     List.of(key),
                     Integer.toString(policy.limit()),
-                    Long.toString(windowMillis)
+                    Long.toString(windowMillis),
+                    UUID.randomUUID().toString()
             );
             if (result == null) {
                 throw new IllegalStateException("Redis rate-limit script returned no result");
@@ -73,8 +82,8 @@ public class RedisRequestRateLimiter implements RequestRateLimiter {
                 return RateLimitDecision.allow();
             }
 
-            long ttlMillis = Math.max(-result, 1);
-            return RateLimitDecision.reject((ttlMillis + 999) / 1000);
+            long retryAfterMillis = Math.max(-result, 1);
+            return RateLimitDecision.reject((retryAfterMillis + 999) / 1000);
         } catch (RuntimeException exception) {
             throw new RateLimitBackendUnavailableException(exception);
         }
