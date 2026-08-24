@@ -11,6 +11,8 @@ import com.cambers.auth.security.jwt.JwtTokenService;
 import com.cambers.auth.security.refresh.GeneratedRefreshToken;
 import com.cambers.auth.security.refresh.RefreshTokenGenerator;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -37,6 +39,7 @@ public class TokenPairIssuer {
         this.clock = clock;
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
     public TokenResponse issue(User user, AuthSession session, RefreshToken parentToken) {
         Instant now = clock.instant();
         Instant refreshExpiresAt = now.plus(sessionProperties.refreshTokenTtl());
