@@ -2,6 +2,7 @@ package com.cambers.auth;
 
 import com.cambers.auth.entity.OneTimeToken;
 import com.cambers.auth.entity.Role;
+import com.cambers.auth.entity.SessionRevocationReason;
 import com.cambers.auth.entity.User;
 import com.cambers.auth.enums.RoleName;
 import com.cambers.auth.enums.TokenPurpose;
@@ -133,7 +134,7 @@ class PasswordResetFlowTests {
 
         assertThat(authSessionRepository.findAll()).hasSize(2).allSatisfy(session -> {
             assertThat(session.isRevoked()).isTrue();
-            assertThat(session.getRevokeReason()).isEqualTo("PASSWORD_RESET");
+            assertThat(session.getRevocationReason()).isEqualTo(SessionRevocationReason.PASSWORD_RESET);
         });
         assertThat(refreshTokenRepository.findAll()).allSatisfy(token -> assertThat(token.isRevoked()).isTrue());
         assertThat(oneTimeTokenRepository.findAll()).allSatisfy(token -> assertThat(token.isConsumed()).isTrue());
