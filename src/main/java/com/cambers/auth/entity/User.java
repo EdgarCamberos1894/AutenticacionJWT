@@ -19,6 +19,7 @@ import jakarta.persistence.Version;
 
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -38,7 +39,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 32, nullable = false)
-    private AccountStatus status = AccountStatus.ACTIVE;
+    private AccountStatus status = AccountStatus.PENDING_VERIFICATION;
 
     @Column(name = "email_verified_at")
     private Instant emailVerifiedAt;
@@ -65,8 +66,8 @@ public class User {
     }
 
     public User(String email, String passwordHash) {
-        this.email = email;
-        this.passwordHash = passwordHash;
+        this.email = Objects.requireNonNull(email, "email must not be null");
+        this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash must not be null");
     }
 
     @PrePersist
@@ -94,7 +95,7 @@ public class User {
     }
 
     public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
+        this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash must not be null");
     }
 
     public AccountStatus getStatus() {
@@ -102,7 +103,7 @@ public class User {
     }
 
     public void setStatus(AccountStatus status) {
-        this.status = status;
+        this.status = Objects.requireNonNull(status, "status must not be null");
     }
 
     public Instant getEmailVerifiedAt() {
@@ -113,8 +114,20 @@ public class User {
         return emailVerifiedAt != null;
     }
 
+    public boolean isAuthenticationAllowed() {
+        return status == AccountStatus.ACTIVE && isEmailVerified();
+    }
+
     public void verifyEmail(Instant verifiedAt) {
-        this.emailVerifiedAt = verifiedAt;
+        Objects.requireNonNull(verifiedAt, "verifiedAt must not be null");
+        if (emailVerifiedAt != null) {
+            return;
+        }
+        if (status != AccountStatus.PENDING_VERIFICATION) {
+            throw new IllegalStateException("Only a pending account can be activated by email verification");
+        }
+        emailVerifiedAt = verifiedAt;
+        status = AccountStatus.ACTIVE;
     }
 
     public Instant getCreatedAt() {
@@ -130,6 +143,6 @@ public class User {
     }
 
     public void addRole(Role role) {
-        roles.add(role);
+        roles.add(Objects.requireNonNull(role, "role must not be null"));
     }
 }
