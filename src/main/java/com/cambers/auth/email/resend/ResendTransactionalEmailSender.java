@@ -17,7 +17,6 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,13 +62,14 @@ public class ResendTransactionalEmailSender implements TransactionalEmailSender 
                     .header(IDEMPOTENCY_HEADER, email.idempotencyKey())
                     .body(requestBody(email))
                     .exchange((request, response) -> {
+                        int status = response.getStatusCode().value();
                         if (response.getStatusCode().is2xxSuccessful()) {
                             ResendSendEmailResponse body = response.bodyTo(ResendSendEmailResponse.class);
                             if (body == null || body.id() == null || body.id().isBlank()) {
                                 throw new EmailDeliveryException(
                                         "Resend returned a successful response without an email id",
                                         false,
-                                        response.getStatusCode().value(),
+                                        status,
                                         null,
                                         null
                                 );
@@ -77,8 +77,7 @@ public class ResendTransactionalEmailSender implements TransactionalEmailSender 
                             return new EmailDeliveryReceipt(body.id());
                         }
 
-                        ResendErrorResponse error = readError(response);
-                        int status = response.getStatusCode().value();
+                        ResendErrorResponse error = readError(response, status);
                         String providerCode = error == null ? null : error.name();
                         throw new EmailDeliveryException(
                                 "Resend rejected the transactional email request",
@@ -130,11 +129,13 @@ public class ResendTransactionalEmailSender implements TransactionalEmailSender 
         return Map.of("name", tag.name(), "value", tag.value());
     }
 
-    private ResendErrorResponse readError(RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse response) {
+    private ResendErrorResponse readError(
+            RestClient.RequestHeadersSpec.ConvertibleClientHttpResponse response,
+            int status) {
         try {
             return response.bodyTo(ResendErrorResponse.class);
-        } catch (IOException | RestClientException exception) {
-            log.warn("Could not decode Resend error response status={}", response.getStatusCode().value());
+        } catch (RestClientException exception) {
+            log.warn("Could not decode Resend error response status={}", status);
             return null;
         }
     }
