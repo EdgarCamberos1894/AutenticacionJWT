@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.UUID;
 
 @Service
 public class EmailVerificationService {
@@ -47,12 +48,56 @@ public class EmailVerificationService {
 
     @Transactional
     public void issueVerification(User user) {
-        if (user.isEmailVerified()) {
+        User lockedUser = userRepository.findByIdForUpdate(user.getId())
+                .orElseThrow(() -> new IllegalStateException("Cannot issue verification for a missing user"));
+        issueVerificationForLockedUser(lockedUser);
+    }
+
+    @Transactional
+    public void resend(String email) {
+        String normalizedEmail = email.strip().toLowerCase(Locale.ROOT);
+        userRepository.findByEmailIgnoreCaseForUpdate(normalizedEmail)
+                .filter(user -> !user.isEmailVerified())
+                .filter(user -> user.getStatus() == AccountStatus.PENDING_VERIFICATION)
+                .ifPresent(this::issueVerificationForLockedUser);
+    }
+
+    @Transactional
+    public void confirm(String rawToken) {
+        String tokenHash = tokenGenerator.hash(rawToken);
+        UUID userId = oneTimeTokenRepository.findUserIdByTokenHash(tokenHash)
+                .orElseThrow(this::invalidVerificationToken);
+
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(this::invalidVerificationToken);
+        OneTimeToken token = oneTimeTokenRepository.findByTokenHashForUpdate(tokenHash)
+                .orElseThrow(this::invalidVerificationToken);
+
+        Instant now = clock.instant();
+        if (!token.getUser().getId().equals(userId)
+                || token.getPurpose() != TokenPurpose.VERIFY_EMAIL
+                || !token.isUsableAt(now)
+                || user.getStatus() != AccountStatus.PENDING_VERIFICATION) {
+            throw invalidVerificationToken();
+        }
+
+        token.consume(now);
+        oneTimeTokenRepository.invalidateOtherActiveTokens(
+                userId,
+                TokenPurpose.VERIFY_EMAIL,
+                token.getId(),
+                now
+        );
+        user.verifyEmail(now);
+    }
+
+    private void issueVerificationForLockedUser(User user) {
+        if (user.isEmailVerified() || user.getStatus() != AccountStatus.PENDING_VERIFICATION) {
             return;
         }
 
         Instant now = clock.instant();
-        oneTimeTokenRepository.consumeActiveTokens(user.getId(), TokenPurpose.VERIFY_EMAIL, now);
+        oneTimeTokenRepository.invalidateActiveTokens(user.getId(), TokenPurpose.VERIFY_EMAIL, now);
 
         GeneratedOpaqueToken generatedToken = tokenGenerator.generate();
         Instant expiresAt = now.plus(properties.emailVerificationTtl());
@@ -68,31 +113,6 @@ public class EmailVerificationService {
                 generatedToken.value(),
                 expiresAt
         ));
-    }
-
-    @Transactional
-    public void resend(String email) {
-        String normalizedEmail = email.strip().toLowerCase(Locale.ROOT);
-        userRepository.findByEmailIgnoreCase(normalizedEmail)
-                .filter(user -> !user.isEmailVerified())
-                .filter(user -> user.getStatus() == AccountStatus.PENDING_VERIFICATION)
-                .ifPresent(this::issueVerification);
-    }
-
-    @Transactional
-    public void confirm(String rawToken) {
-        String tokenHash = tokenGenerator.hash(rawToken);
-        OneTimeToken token = oneTimeTokenRepository.findByTokenHashForUpdate(tokenHash)
-                .orElseThrow(this::invalidVerificationToken);
-
-        Instant now = clock.instant();
-        if (token.getPurpose() != TokenPurpose.VERIFY_EMAIL || token.isConsumed() || token.isExpired(now)) {
-            throw invalidVerificationToken();
-        }
-
-        User user = token.getUser();
-        oneTimeTokenRepository.consumeActiveTokens(user.getId(), TokenPurpose.VERIFY_EMAIL, now);
-        user.verifyEmail(now);
     }
 
     private BadRequestException invalidVerificationToken() {
