@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Locale;
 
 @Service
 public class LoginService {
@@ -26,6 +25,7 @@ public class LoginService {
     private final PasswordEncoder passwordEncoder;
     private final TokenPairIssuer tokenPairIssuer;
     private final LoginRateLimitService loginRateLimitService;
+    private final EmailNormalizer emailNormalizer;
     private final SessionProperties sessionProperties;
     private final Clock clock;
     private final String dummyPasswordHash;
@@ -36,6 +36,7 @@ public class LoginService {
             PasswordEncoder passwordEncoder,
             TokenPairIssuer tokenPairIssuer,
             LoginRateLimitService loginRateLimitService,
+            EmailNormalizer emailNormalizer,
             SessionProperties sessionProperties,
             Clock clock) {
         this.userRepository = userRepository;
@@ -43,6 +44,7 @@ public class LoginService {
         this.passwordEncoder = passwordEncoder;
         this.tokenPairIssuer = tokenPairIssuer;
         this.loginRateLimitService = loginRateLimitService;
+        this.emailNormalizer = emailNormalizer;
         this.sessionProperties = sessionProperties;
         this.clock = clock;
         this.dummyPasswordHash = passwordEncoder.encode("authentication-service-dummy-password");
@@ -50,7 +52,7 @@ public class LoginService {
 
     @Transactional
     public TokenResponse login(LoginRequest request, ClientMetadata clientMetadata) {
-        String normalizedEmail = request.email().strip().toLowerCase(Locale.ROOT);
+        String normalizedEmail = emailNormalizer.normalize(request.email());
         loginRateLimitService.checkAccount(normalizedEmail);
 
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
