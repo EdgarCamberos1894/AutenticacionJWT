@@ -36,7 +36,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        RateLimitPolicyResolver.NamedPolicy namedPolicy = policyResolver.resolve(request.getServletPath())
+        RateLimitPolicyResolver.NamedPolicy namedPolicy = policyResolver.resolve(requestPath(request))
                 .orElse(null);
         if (namedPolicy == null) {
             return true;
@@ -72,6 +72,16 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             );
             return false;
         }
+    }
+
+    private String requestPath(HttpServletRequest request) {
+        String requestUri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+
+        if (contextPath != null && !contextPath.isBlank() && requestUri.startsWith(contextPath)) {
+            return requestUri.substring(contextPath.length());
+        }
+        return requestUri;
     }
 
     private String clientIdentifier(HttpServletRequest request) {
