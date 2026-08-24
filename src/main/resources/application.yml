@@ -56,8 +56,16 @@ security:
       window: ${RATE_LIMIT_RESET_CONFIRM_WINDOW:PT5M}
 
 auth:
-  mail:
-    from: ${MAIL_FROM:no-reply@example.local}
+  email:
+    product-name: ${AUTH_EMAIL_PRODUCT_NAME:Authentication}
+    resend:
+      api-key: ${RESEND_API_KEY:local-not-used}
+      base-url: ${RESEND_BASE_URL:https://api.resend.com}
+      from-name: ${RESEND_FROM_NAME:Authentication}
+      from-address: ${RESEND_FROM_ADDRESS:onboarding@resend.dev}
+      reply-to: ${RESEND_REPLY_TO:}
+      connect-timeout: ${RESEND_CONNECT_TIMEOUT:PT3S}
+      read-timeout: ${RESEND_READ_TIMEOUT:PT5S}
   email-verification:
     public-url: ${VERIFICATION_PUBLIC_URL:http://localhost:3000/verify-email}
   password-reset:
