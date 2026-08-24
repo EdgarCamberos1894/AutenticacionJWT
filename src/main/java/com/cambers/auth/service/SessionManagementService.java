@@ -1,6 +1,6 @@
 package com.cambers.auth.service;
 
-import com.cambers.auth.dto.SessionResponse;
+import com.cambers.auth.dto.AuthSessionResponse;
 import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.SessionRevocationReason;
 import com.cambers.auth.repository.AuthSessionRepository;
@@ -29,7 +29,7 @@ public class SessionManagementService {
     }
 
     @Transactional(readOnly = true)
-    public List<SessionResponse> listActiveSessions(UUID userId, UUID currentSessionId) {
+    public List<AuthSessionResponse> listActiveSessions(UUID userId, UUID currentSessionId) {
         Instant now = clock.instant();
         return authSessionRepository.findActiveByUserId(userId, now)
                 .stream()
@@ -49,8 +49,8 @@ public class SessionManagementService {
         sessionRevocationService.revokeAllForUser(userId, SessionRevocationReason.LOGOUT_ALL);
     }
 
-    private SessionResponse toResponse(AuthSession session, UUID currentSessionId) {
-        return new SessionResponse(
+    private AuthSessionResponse toResponse(AuthSession session, UUID currentSessionId) {
+        return new AuthSessionResponse(
                 session.getId(),
                 session.getCreatedAt(),
                 session.getLastUsedAt(),
