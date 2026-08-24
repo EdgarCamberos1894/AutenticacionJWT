@@ -28,6 +28,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -161,7 +162,6 @@ class AuthenticationFlowTests {
         assertThat(authSessionRepository.findById(sessionId).orElseThrow().isRevoked()).isTrue();
         assertInvalidRefresh(refreshToken);
 
-        // Access JWTs remain stateless and valid until their short expiration; the revoked session is no longer active.
         mockMvc.perform(get("/api/v1/auth/sessions")
                         .header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
                 .andExpect(status().isOk())
@@ -258,6 +258,7 @@ class AuthenticationFlowTests {
     private User createUser(String email) {
         Role userRole = roleRepository.findById(RoleName.USER).orElseThrow();
         User user = new User(email, passwordEncoder.encode(PASSWORD));
+        user.verifyEmail(Instant.now());
         user.addRole(userRole);
         return userRepository.saveAndFlush(user);
     }
