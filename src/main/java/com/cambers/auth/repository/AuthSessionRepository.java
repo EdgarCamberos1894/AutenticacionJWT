@@ -1,6 +1,7 @@
 package com.cambers.auth.repository;
 
 import com.cambers.auth.entity.AuthSession;
+import com.cambers.auth.entity.SessionRevocationReason;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -14,10 +15,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> {
-
-    List<AuthSession> findAllByUserIdOrderByCreatedAtDesc(UUID userId);
-
-    Optional<AuthSession> findByIdAndUserId(UUID id, UUID userId);
 
     @Query("""
             select session
@@ -52,13 +49,13 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> 
     @Query("""
             update AuthSession session
             set session.revokedAt = :revokedAt,
-                session.revokeReason = :reason
+                session.revocationReason = :reason
             where session.user.id = :userId
               and session.revokedAt is null
             """)
     int revokeAllActiveByUserId(
             @Param("userId") UUID userId,
             @Param("revokedAt") Instant revokedAt,
-            @Param("reason") String reason
+            @Param("reason") SessionRevocationReason reason
     );
 }
