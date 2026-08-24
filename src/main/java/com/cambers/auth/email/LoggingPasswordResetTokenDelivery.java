@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
 @Component
-@Profile("!prod")
+@Profile({"local", "test"})
 public class LoggingPasswordResetTokenDelivery implements PasswordResetTokenDelivery {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingPasswordResetTokenDelivery.class);
