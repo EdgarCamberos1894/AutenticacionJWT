@@ -1,7 +1,7 @@
 package com.cambers.auth.service;
 
 import com.cambers.auth.config.properties.SessionProperties;
-import com.cambers.auth.dto.TokenResponse;
+import com.cambers.auth.dto.TokenPairResponse;
 import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.RefreshToken;
 import com.cambers.auth.entity.User;
@@ -40,7 +40,7 @@ public class TokenPairIssuer {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public TokenResponse issue(User user, AuthSession session, RefreshToken parentToken) {
+    public TokenPairResponse issue(User user, AuthSession session, RefreshToken parentToken) {
         Instant now = clock.instant();
         Instant refreshExpiresAt = now.plus(sessionProperties.refreshTokenTtl());
         if (refreshExpiresAt.isAfter(session.getExpiresAt())) {
@@ -58,7 +58,7 @@ public class TokenPairIssuer {
         refreshTokenRepository.save(refreshToken);
 
         IssuedAccessToken accessToken = jwtTokenService.issueAccessToken(user, session.getId());
-        return new TokenResponse(
+        return new TokenPairResponse(
                 accessToken.value(),
                 generatedRefreshToken.value(),
                 "Bearer",
