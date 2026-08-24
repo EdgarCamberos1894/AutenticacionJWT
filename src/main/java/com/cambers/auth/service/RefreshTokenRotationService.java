@@ -4,7 +4,6 @@ import com.cambers.auth.dto.TokenResponse;
 import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.RefreshToken;
 import com.cambers.auth.entity.User;
-import com.cambers.auth.enums.AccountStatus;
 import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.exception.UnauthorizedException;
 import com.cambers.auth.repository.RefreshTokenRepository;
@@ -59,7 +58,7 @@ public class RefreshTokenRotationService {
         }
 
         User user = session.getUser();
-        if (user.getStatus() != AccountStatus.ACTIVE) {
+        if (!user.isAuthenticationAllowed()) {
             throw invalidRefreshToken();
         }
 
