@@ -6,6 +6,10 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  data:
+    redis:
+      repositories:
+        enabled: false
   jpa:
     open-in-view: false
     hibernate:
