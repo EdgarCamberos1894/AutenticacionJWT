@@ -32,6 +32,9 @@ security:
     login:
       limit: ${RATE_LIMIT_LOGIN_LIMIT:10}
       window: ${RATE_LIMIT_LOGIN_WINDOW:PT1M}
+    login-account:
+      limit: ${RATE_LIMIT_LOGIN_ACCOUNT_LIMIT:10}
+      window: ${RATE_LIMIT_LOGIN_ACCOUNT_WINDOW:PT5M}
     refresh:
       limit: ${RATE_LIMIT_REFRESH_LIMIT:60}
       window: ${RATE_LIMIT_REFRESH_WINDOW:PT1M}
