@@ -28,6 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "security.rate-limit.enabled=true",
         "security.rate-limit.login.limit=2",
         "security.rate-limit.login.window=PT5M",
+        "security.rate-limit.login-account.limit=2",
+        "security.rate-limit.login-account.window=PT5M",
         "management.health.redis.enabled=true"
 })
 @AutoConfigureMockMvc
