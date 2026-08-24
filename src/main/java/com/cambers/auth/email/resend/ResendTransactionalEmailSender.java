@@ -32,12 +32,26 @@ public class ResendTransactionalEmailSender implements TransactionalEmailSender 
     private final ResendProperties properties;
 
     public ResendTransactionalEmailSender(ResendProperties properties) {
-        this(createRestClient(properties), properties);
+        this(configure(RestClient.builder(), properties).build(), properties);
     }
 
     ResendTransactionalEmailSender(RestClient restClient, ResendProperties properties) {
         this.restClient = restClient;
         this.properties = properties;
+    }
+
+    static RestClient.Builder configure(RestClient.Builder builder, ResendProperties properties) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(properties.connectTimeout());
+        requestFactory.setReadTimeout(properties.readTimeout());
+
+        return builder
+                .baseUrl(properties.baseUrl().toString())
+                .requestFactory(requestFactory)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + properties.apiKey())
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader(HttpHeaders.USER_AGENT, "authentication-service/resend");
     }
 
     @Override
@@ -128,20 +142,5 @@ public class ResendTransactionalEmailSender implements TransactionalEmailSender 
         return status == 429
                 || status >= 500
                 || (status == 409 && "concurrent_idempotent_requests".equals(providerCode));
-    }
-
-    private static RestClient createRestClient(ResendProperties properties) {
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(properties.connectTimeout());
-        requestFactory.setReadTimeout(properties.readTimeout());
-
-        return RestClient.builder()
-                .baseUrl(properties.baseUrl().toString())
-                .requestFactory(requestFactory)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + properties.apiKey())
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.USER_AGENT, "authentication-service/resend")
-                .build();
     }
 }
