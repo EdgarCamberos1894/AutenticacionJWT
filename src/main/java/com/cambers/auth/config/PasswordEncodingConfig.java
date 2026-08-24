@@ -29,12 +29,16 @@ public class PasswordEncodingConfig {
         );
         PasswordEncoder bcrypt = new BCryptPasswordEncoder(12);
 
-        return new DelegatingPasswordEncoder(
+        DelegatingPasswordEncoder delegatingPasswordEncoder = new DelegatingPasswordEncoder(
                 "argon2id",
                 Map.of(
                         "argon2id", argon2id,
                         "bcrypt", bcrypt
                 )
         );
+        // The legacy project persisted BCrypt hashes without a {bcrypt} prefix.
+        // Use BCrypt only as the fallback matcher; every new encode still uses Argon2id.
+        delegatingPasswordEncoder.setDefaultPasswordEncoderForMatches(bcrypt);
+        return delegatingPasswordEncoder;
     }
 }
