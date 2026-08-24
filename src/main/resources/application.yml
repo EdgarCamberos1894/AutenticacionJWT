@@ -24,9 +24,12 @@ security:
     password-reset-ttl: ${PASSWORD_RESET_TTL:PT15M}
 
 auth:
+  mail:
+    from: ${MAIL_FROM:no-reply@example.local}
   email-verification:
     public-url: ${VERIFICATION_PUBLIC_URL:http://localhost:3000/verify-email}
-    from: ${MAIL_FROM:no-reply@example.local}
+  password-reset:
+    public-url: ${PASSWORD_RESET_PUBLIC_URL:http://localhost:3000/reset-password}
 
 server:
   shutdown: graceful

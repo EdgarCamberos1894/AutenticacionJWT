@@ -1,7 +1,7 @@
 package com.cambers.auth.email;
 
 import com.cambers.auth.config.properties.AuthMailProperties;
-import com.cambers.auth.config.properties.VerificationDeliveryProperties;
+import com.cambers.auth.config.properties.PasswordResetDeliveryProperties;
 import org.springframework.context.annotation.Profile;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -13,15 +13,15 @@ import java.time.Instant;
 
 @Component
 @Profile("prod")
-public class SmtpVerificationTokenDelivery implements VerificationTokenDelivery {
+public class SmtpPasswordResetTokenDelivery implements PasswordResetTokenDelivery {
 
     private final JavaMailSender mailSender;
-    private final VerificationDeliveryProperties properties;
+    private final PasswordResetDeliveryProperties properties;
     private final AuthMailProperties mailProperties;
 
-    public SmtpVerificationTokenDelivery(
+    public SmtpPasswordResetTokenDelivery(
             JavaMailSender mailSender,
-            VerificationDeliveryProperties properties,
+            PasswordResetDeliveryProperties properties,
             AuthMailProperties mailProperties) {
         this.mailSender = mailSender;
         this.properties = properties;
@@ -33,13 +33,13 @@ public class SmtpVerificationTokenDelivery implements VerificationTokenDelivery 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(mailProperties.from());
         message.setTo(email);
-        message.setSubject("Verify your email address");
-        message.setText("Verify your email address using this link:\n\n" + verificationLink(rawToken)
+        message.setSubject("Reset your password");
+        message.setText("Reset your password using this link:\n\n" + resetLink(rawToken)
                 + "\n\nThis link expires at " + expiresAt + ".");
         mailSender.send(message);
     }
 
-    private String verificationLink(String rawToken) {
+    private String resetLink(String rawToken) {
         String separator = properties.publicUrl().toString().contains("?") ? "&" : "?";
         return properties.publicUrl()
                 + separator

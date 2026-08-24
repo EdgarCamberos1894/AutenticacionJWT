@@ -7,6 +7,6 @@ import org.springframework.validation.annotation.Validated;
 import java.net.URI;
 
 @Validated
-@ConfigurationProperties(prefix = "auth.email-verification")
-public record VerificationDeliveryProperties(@NotNull URI publicUrl) {
+@ConfigurationProperties(prefix = "auth.password-reset")
+public record PasswordResetDeliveryProperties(@NotNull URI publicUrl) {
 }

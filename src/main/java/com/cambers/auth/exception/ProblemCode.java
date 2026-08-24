@@ -9,6 +9,7 @@ public enum ProblemCode {
     INVALID_CREDENTIALS("invalid-credentials", "Invalid credentials"),
     INVALID_REFRESH_TOKEN("invalid-refresh-token", "Invalid refresh token"),
     INVALID_VERIFICATION_TOKEN("invalid-verification-token", "Invalid verification token"),
+    INVALID_PASSWORD_RESET_TOKEN("invalid-password-reset-token", "Invalid password reset token"),
     EMAIL_ALREADY_REGISTERED("email-already-registered", "Email already registered"),
     AUTHENTICATION_REQUIRED("authentication-required", "Authentication required"),
     ACCESS_DENIED("access-denied", "Access denied"),

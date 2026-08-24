@@ -19,6 +19,7 @@ public class SessionManagementService {
     private static final String LOGOUT_REASON = "LOGOUT";
     private static final String LOGOUT_ALL_REASON = "LOGOUT_ALL";
     private static final String MANUAL_REVOCATION_REASON = "MANUAL_REVOCATION";
+    private static final String PASSWORD_RESET_REASON = "PASSWORD_RESET";
 
     private final AuthSessionRepository authSessionRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -54,9 +55,12 @@ public class SessionManagementService {
 
     @Transactional
     public void logoutAll(UUID userId) {
-        Instant now = clock.instant();
-        refreshTokenRepository.revokeAllByUserId(userId, now);
-        authSessionRepository.revokeAllActiveByUserId(userId, now, LOGOUT_ALL_REASON);
+        revokeAll(userId, LOGOUT_ALL_REASON);
+    }
+
+    @Transactional
+    public void revokeAllForPasswordReset(UUID userId) {
+        revokeAll(userId, PASSWORD_RESET_REASON);
     }
 
     private void revokeOwnedSession(UUID userId, UUID sessionId, String reason) {
@@ -70,6 +74,12 @@ public class SessionManagementService {
         Instant now = clock.instant();
         session.revoke(now, reason);
         refreshTokenRepository.revokeAllBySessionId(sessionId, now);
+    }
+
+    private void revokeAll(UUID userId, String reason) {
+        Instant now = clock.instant();
+        refreshTokenRepository.revokeAllByUserId(userId, now);
+        authSessionRepository.revokeAllActiveByUserId(userId, now, reason);
     }
 
     private SessionResponse toResponse(AuthSession session, UUID currentSessionId) {

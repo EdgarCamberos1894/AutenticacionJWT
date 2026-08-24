@@ -3,6 +3,8 @@ package com.cambers.auth.controller;
 import com.cambers.auth.dto.EmailVerificationRequest;
 import com.cambers.auth.dto.EmailVerificationResendRequest;
 import com.cambers.auth.dto.LoginRequest;
+import com.cambers.auth.dto.PasswordResetConfirmRequest;
+import com.cambers.auth.dto.PasswordResetRequest;
 import com.cambers.auth.dto.RefreshRequest;
 import com.cambers.auth.dto.RegisterRequest;
 import com.cambers.auth.dto.RegistrationResponse;
@@ -11,6 +13,7 @@ import com.cambers.auth.dto.TokenResponse;
 import com.cambers.auth.service.AuthenticationService;
 import com.cambers.auth.service.ClientMetadata;
 import com.cambers.auth.service.EmailVerificationService;
+import com.cambers.auth.service.PasswordResetService;
 import com.cambers.auth.service.RegistrationService;
 import com.cambers.auth.service.SessionManagementService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,16 +42,19 @@ public class AuthController {
     private final AuthenticationService authenticationService;
     private final RegistrationService registrationService;
     private final EmailVerificationService emailVerificationService;
+    private final PasswordResetService passwordResetService;
     private final SessionManagementService sessionManagementService;
 
     public AuthController(
             AuthenticationService authenticationService,
             RegistrationService registrationService,
             EmailVerificationService emailVerificationService,
+            PasswordResetService passwordResetService,
             SessionManagementService sessionManagementService) {
         this.authenticationService = authenticationService;
         this.registrationService = registrationService;
         this.emailVerificationService = emailVerificationService;
+        this.passwordResetService = passwordResetService;
         this.sessionManagementService = sessionManagementService;
     }
 
@@ -85,6 +91,19 @@ public class AuthController {
     public ResponseEntity<Void> confirmEmailVerification(
             @Valid @RequestBody EmailVerificationRequest request) {
         emailVerificationService.confirm(request.token());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(path = "/password-reset", consumes = "application/json")
+    public ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody PasswordResetRequest request) {
+        passwordResetService.requestReset(request.email());
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping(path = "/password-reset/confirm", consumes = "application/json")
+    public ResponseEntity<Void> confirmPasswordReset(
+            @Valid @RequestBody PasswordResetConfirmRequest request) {
+        passwordResetService.confirmReset(request.token(), request.newPassword());
         return ResponseEntity.noContent().build();
     }
 
