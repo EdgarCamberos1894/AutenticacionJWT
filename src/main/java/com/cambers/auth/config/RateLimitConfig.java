@@ -9,19 +9,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "security.rate-limit", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(RateLimitProperties.class)
-public class RateLimitConfig implements WebMvcConfigurer {
-
-    private final RateLimitInterceptor rateLimitInterceptor;
-
-    public RateLimitConfig(RateLimitInterceptor rateLimitInterceptor) {
-        this.rateLimitInterceptor = rateLimitInterceptor;
-    }
+public class RateLimitConfig {
 
     @Bean
     RateLimitPolicyResolver rateLimitPolicyResolver(RateLimitProperties properties) {
@@ -36,9 +29,14 @@ public class RateLimitConfig implements WebMvcConfigurer {
         return new RateLimitInterceptor(policyResolver, requestRateLimiter, problemWriter);
     }
 
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(rateLimitInterceptor)
-                .addPathPatterns("/api/v1/auth/**");
+    @Bean
+    WebMvcConfigurer rateLimitWebMvcConfigurer(RateLimitInterceptor rateLimitInterceptor) {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
+                registry.addInterceptor(rateLimitInterceptor)
+                        .addPathPatterns("/api/v1/auth/**");
+            }
+        };
     }
 }
