@@ -19,6 +19,14 @@ security:
   sessions:
     session-ttl: ${AUTH_SESSION_TTL:P30D}
     refresh-token-ttl: ${AUTH_REFRESH_TOKEN_TTL:P7D}
+  one-time-tokens:
+    email-verification-ttl: ${EMAIL_VERIFICATION_TTL:PT30M}
+    password-reset-ttl: ${PASSWORD_RESET_TTL:PT15M}
+
+auth:
+  email-verification:
+    public-url: ${VERIFICATION_PUBLIC_URL:http://localhost:3000/verify-email}
+    from: ${MAIL_FROM:no-reply@example.local}
 
 server:
   shutdown: graceful

@@ -37,8 +37,14 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-                        // Permit the public resource paths, not only POST, so MVC can correctly return 405/415/422.
-                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                        // Permit public resource paths for all methods so MVC can correctly produce 405/415/422.
+                        .requestMatchers(
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/email-verification",
+                                "/api/v1/auth/email-verification/confirm"
+                        ).permitAll()
                         .anyRequest().authenticated());
 
         return http.build();

@@ -8,6 +8,8 @@ public enum ProblemCode {
     VALIDATION_ERROR("validation-error", "Request validation failed"),
     INVALID_CREDENTIALS("invalid-credentials", "Invalid credentials"),
     INVALID_REFRESH_TOKEN("invalid-refresh-token", "Invalid refresh token"),
+    INVALID_VERIFICATION_TOKEN("invalid-verification-token", "Invalid verification token"),
+    EMAIL_ALREADY_REGISTERED("email-already-registered", "Email already registered"),
     AUTHENTICATION_REQUIRED("authentication-required", "Authentication required"),
     ACCESS_DENIED("access-denied", "Access denied"),
     RESOURCE_NOT_FOUND("resource-not-found", "Resource not found"),

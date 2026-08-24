@@ -5,6 +5,17 @@ spring:
     password: ${DB_PASSWORD}
   jpa:
     show-sql: false
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_STARTTLS:true}
 
 security:
   jwt:
@@ -13,6 +24,11 @@ security:
     keys:
       public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
       private-key-location: ${JWT_PRIVATE_KEY_LOCATION}
+
+auth:
+  email-verification:
+    public-url: ${VERIFICATION_PUBLIC_URL}
+    from: ${MAIL_FROM}
 
 logging:
   level:
