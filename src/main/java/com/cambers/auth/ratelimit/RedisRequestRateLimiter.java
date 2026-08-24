@@ -2,21 +2,47 @@ package com.cambers.auth.ratelimit;
 
 import com.cambers.auth.config.properties.RateLimitProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Component
 @ConditionalOnProperty(prefix = "security.rate-limit", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RedisRequestRateLimiter implements RequestRateLimiter {
 
     private static final String KEY_PREFIX = "auth:rate-limit:v1:";
+
+    /**
+     * Fixed-window limiter executed atomically by Redis.
+     *
+     * A positive result means the request is allowed. A negative result encodes
+     * the remaining window TTL in milliseconds for a rejected request.
+     */
+    private static final DefaultRedisScript<Long> CONSUME_SCRIPT = new DefaultRedisScript<>("""
+            local limit = tonumber(ARGV[1])
+            local window = tonumber(ARGV[2])
+            local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+
+            if current >= limit then
+                local ttl = redis.call('PTTL', KEYS[1])
+                if ttl <= 0 then
+                    ttl = window
+                    redis.call('PEXPIRE', KEYS[1], window)
+                end
+                return -math.max(ttl, 1)
+            end
+
+            local next = redis.call('INCR', KEYS[1])
+            if next == 1 then
+                redis.call('PEXPIRE', KEYS[1], window)
+            end
+            return next
+            """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
 
@@ -34,54 +60,24 @@ public class RedisRequestRateLimiter implements RequestRateLimiter {
         long windowMillis = policy.window().toMillis();
 
         try {
-            Object rawResult = redisTemplate.execute((RedisCallback<Object>) connection -> connection.execute(
-                    "INCREX",
-                    bytes(key),
-                    bytes("BYINT"),
-                    bytes("1"),
-                    bytes("UBOUND"),
-                    bytes(Integer.toString(policy.limit())),
-                    bytes("PX"),
-                    bytes(Long.toString(windowMillis)),
-                    bytes("ENX")
-            ));
-
-            List<?> result = requireTwoElementResult(rawResult);
-            long actualIncrement = asLong(result.get(1));
-            if (actualIncrement > 0) {
+            Long result = redisTemplate.execute(
+                    CONSUME_SCRIPT,
+                    List.of(key),
+                    Integer.toString(policy.limit()),
+                    Long.toString(windowMillis)
+            );
+            if (result == null) {
+                throw new IllegalStateException("Redis rate-limit script returned no result");
+            }
+            if (result > 0) {
                 return RateLimitDecision.allow();
             }
 
-            Long ttlMillis = redisTemplate.getExpire(key, TimeUnit.MILLISECONDS);
-            long effectiveTtl = ttlMillis == null || ttlMillis <= 0 ? windowMillis : ttlMillis;
-            return RateLimitDecision.reject((effectiveTtl + 999) / 1000);
+            long ttlMillis = Math.max(-result, 1);
+            return RateLimitDecision.reject((ttlMillis + 999) / 1000);
         } catch (RuntimeException exception) {
             throw new RateLimitBackendUnavailableException(exception);
         }
-    }
-
-    private List<?> requireTwoElementResult(Object rawResult) {
-        if (rawResult instanceof List<?> result && result.size() == 2) {
-            return result;
-        }
-        throw new IllegalStateException("INCREX returned an unexpected response");
-    }
-
-    private long asLong(Object value) {
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        if (value instanceof byte[] bytes) {
-            return Long.parseLong(new String(bytes, StandardCharsets.UTF_8));
-        }
-        if (value instanceof String string) {
-            return Long.parseLong(string);
-        }
-        throw new IllegalStateException("INCREX returned a non-numeric value");
-    }
-
-    private byte[] bytes(String value) {
-        return value.getBytes(StandardCharsets.UTF_8);
     }
 
     private String sha256(String value) {
