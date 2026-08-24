@@ -12,31 +12,40 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "security.rate-limit", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(RateLimitProperties.class)
 public class RateLimitConfig {
 
-    @Bean
-    RateLimitPolicyResolver rateLimitPolicyResolver(RateLimitProperties properties) {
-        return new RateLimitPolicyResolver(properties);
-    }
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnProperty(
+            prefix = "security.rate-limit",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    static class EnabledRateLimitMvcConfig {
 
-    @Bean
-    RateLimitInterceptor rateLimitInterceptor(
-            RateLimitPolicyResolver policyResolver,
-            RequestRateLimiter requestRateLimiter,
-            SecurityProblemWriter problemWriter) {
-        return new RateLimitInterceptor(policyResolver, requestRateLimiter, problemWriter);
-    }
+        @Bean
+        RateLimitPolicyResolver rateLimitPolicyResolver(RateLimitProperties properties) {
+            return new RateLimitPolicyResolver(properties);
+        }
 
-    @Bean
-    WebMvcConfigurer rateLimitWebMvcConfigurer(RateLimitInterceptor rateLimitInterceptor) {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
-                registry.addInterceptor(rateLimitInterceptor)
-                        .addPathPatterns("/api/v1/auth/**");
-            }
-        };
+        @Bean
+        RateLimitInterceptor rateLimitInterceptor(
+                RateLimitPolicyResolver policyResolver,
+                RequestRateLimiter requestRateLimiter,
+                SecurityProblemWriter problemWriter) {
+            return new RateLimitInterceptor(policyResolver, requestRateLimiter, problemWriter);
+        }
+
+        @Bean
+        WebMvcConfigurer rateLimitWebMvcConfigurer(RateLimitInterceptor rateLimitInterceptor) {
+            return new WebMvcConfigurer() {
+                @Override
+                public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
+                    registry.addInterceptor(rateLimitInterceptor)
+                            .addPathPatterns("/api/v1/auth/**");
+                }
+            };
+        }
     }
 }
