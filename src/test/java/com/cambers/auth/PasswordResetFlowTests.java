@@ -108,12 +108,14 @@ class PasswordResetFlowTests {
         String firstRefresh = JsonPath.read(firstLogin.getResponse().getContentAsString(), "$.refreshToken");
         String secondRefresh = JsonPath.read(secondLogin.getResponse().getContentAsString(), "$.refreshToken");
 
+        Instant now = Instant.now();
         GeneratedOpaqueToken resetToken = opaqueTokenGenerator.generate();
         oneTimeTokenRepository.saveAndFlush(new OneTimeToken(
                 user,
                 TokenPurpose.RESET_PASSWORD,
                 resetToken.hash(),
-                Instant.now().plusSeconds(300)
+                now,
+                now.plusSeconds(300)
         ));
 
         mockMvc.perform(post("/api/v1/auth/password-reset/confirm")
@@ -143,12 +145,14 @@ class PasswordResetFlowTests {
     @Test
     void resetTokenIsSingleUseAndInvalidTokensUseProblemDetails() throws Exception {
         User user = createVerifiedUser();
+        Instant now = Instant.now();
         GeneratedOpaqueToken resetToken = opaqueTokenGenerator.generate();
         oneTimeTokenRepository.saveAndFlush(new OneTimeToken(
                 user,
                 TokenPurpose.RESET_PASSWORD,
                 resetToken.hash(),
-                Instant.now().plusSeconds(300)
+                now,
+                now.plusSeconds(300)
         ));
 
         mockMvc.perform(post("/api/v1/auth/password-reset/confirm")
@@ -171,9 +175,10 @@ class PasswordResetFlowTests {
     }
 
     private User createVerifiedUser() {
-        User user = new User(EMAIL, passwordEncoder.encode(OLD_PASSWORD));
-        user.verifyEmail(Instant.now());
-        user.assignRole(RoleName.USER);
+        Instant now = Instant.now();
+        User user = new User(EMAIL, passwordEncoder.encode(OLD_PASSWORD), now);
+        user.verifyEmail(now);
+        user.assignRole(RoleName.USER, now);
         return userRepository.saveAndFlush(user);
     }
 
