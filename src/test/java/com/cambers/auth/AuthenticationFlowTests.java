@@ -250,9 +250,10 @@ class AuthenticationFlowTests {
     }
 
     private User createUser(String email) {
-        User user = new User(email, passwordEncoder.encode(PASSWORD));
-        user.verifyEmail(Instant.now());
-        user.assignRole(RoleName.USER);
+        Instant now = Instant.now();
+        User user = new User(email, passwordEncoder.encode(PASSWORD), now);
+        user.verifyEmail(now);
+        user.assignRole(RoleName.USER, now);
         return userRepository.saveAndFlush(user);
     }
 
