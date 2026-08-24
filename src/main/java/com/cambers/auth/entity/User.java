@@ -94,16 +94,12 @@ public class User {
         return passwordHash;
     }
 
-    public void setPasswordHash(String passwordHash) {
+    public void changePasswordHash(String passwordHash) {
         this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash must not be null");
     }
 
     public AccountStatus getStatus() {
         return status;
-    }
-
-    public void setStatus(AccountStatus status) {
-        this.status = Objects.requireNonNull(status, "status must not be null");
     }
 
     public Instant getEmailVerifiedAt() {
@@ -139,7 +135,7 @@ public class User {
     }
 
     public Set<Role> getRoles() {
-        return roles;
+        return Set.copyOf(roles);
     }
 
     public void addRole(Role role) {
