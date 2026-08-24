@@ -1,7 +1,5 @@
 package com.cambers.auth.exception;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -9,17 +7,13 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(GlobalExceptionHandlerTests.ContractController.class)
+@WebMvcTest(ContractTestController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
 class GlobalExceptionHandlerTests {
@@ -48,22 +42,5 @@ class GlobalExceptionHandlerTests {
                 .andExpect(jsonPath("$.type").value("urn:cambers:problem:conflict"))
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
-    }
-
-    @RestController
-    @RequestMapping("/contract")
-    static class ContractController {
-
-        @PostMapping("/validation")
-        void validation(@Valid @RequestBody ValidationRequest request) {
-        }
-
-        @PostMapping("/conflict")
-        void conflict() {
-            throw new ConflictException("The requested state conflicts with the current resource state.");
-        }
-    }
-
-    record ValidationRequest(@NotBlank String name) {
     }
 }
