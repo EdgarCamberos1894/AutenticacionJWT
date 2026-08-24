@@ -11,15 +11,17 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.net.URI;
-import java.time.Instant;
+import java.time.Clock;
 
 @Component
 public class SecurityProblemWriter {
 
     private final JsonMapper jsonMapper;
+    private final Clock clock;
 
-    public SecurityProblemWriter(JsonMapper jsonMapper) {
+    public SecurityProblemWriter(JsonMapper jsonMapper, Clock clock) {
         this.jsonMapper = jsonMapper;
+        this.clock = clock;
     }
 
     public void write(
@@ -33,8 +35,8 @@ public class SecurityProblemWriter {
         problem.setType(code.type());
         problem.setTitle(code.title());
         problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("code", code.name());
-        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty("code", code.value());
+        problem.setProperty("timestamp", clock.instant());
 
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
