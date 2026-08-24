@@ -20,10 +20,18 @@ public class VerificationTokenDeliveryListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onVerificationTokenIssued(VerificationTokenIssuedEvent event) {
         try {
-            delivery.deliver(event.email(), event.rawToken(), event.expiresAt());
+            delivery.deliver(event.email(), event.rawToken(), event.expiresAt(), event.issuanceId());
+        } catch (EmailDeliveryException exception) {
+            log.error(
+                    "Could not deliver email verification message issuanceId={} retryable={} providerStatus={} providerCode={}",
+                    event.issuanceId(),
+                    exception.isRetryable(),
+                    exception.getProviderStatus(),
+                    exception.getProviderCode(),
+                    exception
+            );
         } catch (RuntimeException exception) {
-            // The account/token transaction is already committed. Resend remains available instead of returning a false 500.
-            log.error("Could not deliver email verification message for {}", event.email(), exception);
+            log.error("Unexpected email verification delivery failure issuanceId={}", event.issuanceId(), exception);
         }
     }
 }
