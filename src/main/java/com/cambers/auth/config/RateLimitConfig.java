@@ -7,13 +7,11 @@ import com.cambers.auth.ratelimit.RateLimitPolicyResolver;
 import com.cambers.auth.ratelimit.RequestRateLimiter;
 import com.cambers.auth.security.SecurityProblemWriter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(RateLimitProperties.class)
 public class RateLimitConfig {
 
     @Configuration(proxyBeanMethods = false)
