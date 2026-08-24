@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -103,15 +104,17 @@ public class EmailVerificationService {
 
         GeneratedOpaqueToken generatedToken = tokenGenerator.generate();
         Instant expiresAt = now.plus(properties.emailVerificationTtl());
-        oneTimeTokenRepository.save(new OneTimeToken(
+        OneTimeToken token = oneTimeTokenRepository.save(new OneTimeToken(
                 user,
                 TokenPurpose.VERIFY_EMAIL,
                 generatedToken.hash(),
                 now,
                 expiresAt
         ));
+        UUID issuanceId = Objects.requireNonNull(token.getId(), "Persisted verification token must have an id");
 
         eventPublisher.publishEvent(new VerificationTokenIssuedEvent(
+                issuanceId,
                 user.getEmail(),
                 generatedToken.value(),
                 expiresAt
