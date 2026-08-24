@@ -1,8 +1,17 @@
 package com.cambers.auth.ratelimit;
 
-public class RateLimitBackendUnavailableException extends RuntimeException {
+import com.cambers.auth.exception.ApiException;
+import com.cambers.auth.exception.ProblemCode;
+import org.springframework.http.HttpStatus;
+
+public class RateLimitBackendUnavailableException extends ApiException {
 
     public RateLimitBackendUnavailableException(Throwable cause) {
-        super("Rate-limit backend is unavailable", cause);
+        super(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                ProblemCode.SERVICE_UNAVAILABLE,
+                "The authentication service is temporarily unable to enforce request limits."
+        );
+        initCause(cause);
     }
 }
