@@ -8,10 +8,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -48,16 +48,17 @@ public class RefreshToken {
     protected RefreshToken() {
     }
 
-    public RefreshToken(AuthSession session, RefreshToken parentToken, String tokenHash, Instant expiresAt) {
-        this.session = session;
+    public RefreshToken(
+            AuthSession session,
+            RefreshToken parentToken,
+            String tokenHash,
+            Instant createdAt,
+            Instant expiresAt) {
+        this.session = Objects.requireNonNull(session, "session must not be null");
         this.parentToken = parentToken;
-        this.tokenHash = tokenHash;
-        this.expiresAt = expiresAt;
-    }
-
-    @PrePersist
-    void onCreate() {
-        createdAt = Instant.now();
+        this.tokenHash = Objects.requireNonNull(tokenHash, "tokenHash must not be null");
+        this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
+        this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt must not be null");
     }
 
     public UUID getId() {
@@ -105,10 +106,11 @@ public class RefreshToken {
     }
 
     public void markUsed(Instant now) {
-        usedAt = now;
+        usedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
     public void revoke(Instant now) {
+        Objects.requireNonNull(now, "now must not be null");
         if (revokedAt == null) {
             revokedAt = now;
         }
