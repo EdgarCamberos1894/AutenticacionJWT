@@ -1,6 +1,6 @@
 package com.cambers.auth.service;
 
-import com.cambers.auth.dto.TokenResponse;
+import com.cambers.auth.dto.TokenPairResponse;
 import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.RefreshToken;
 import com.cambers.auth.entity.User;
@@ -34,7 +34,7 @@ public class RefreshTokenRotationService {
     }
 
     @Transactional
-    public TokenResponse rotate(String rawRefreshToken) {
+    public TokenPairResponse rotate(String rawRefreshToken) {
         String tokenHash = refreshTokenGenerator.hash(rawRefreshToken);
         RefreshToken refreshToken = refreshTokenRepository.findByTokenHashForUpdate(tokenHash)
                 .orElseThrow(this::invalidRefreshToken);
