@@ -70,7 +70,7 @@ public class LoginService {
         }
 
         if (passwordEncoder.upgradeEncoding(user.getPasswordHash())) {
-            user.setPasswordHash(passwordEncoder.encode(request.password()));
+            user.changePasswordHash(passwordEncoder.encode(request.password()));
         }
 
         Instant sessionExpiresAt = clock.instant().plus(sessionProperties.sessionTtl());
