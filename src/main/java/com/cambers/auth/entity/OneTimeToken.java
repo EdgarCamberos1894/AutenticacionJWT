@@ -10,7 +10,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -51,16 +50,17 @@ public class OneTimeToken {
     protected OneTimeToken() {
     }
 
-    public OneTimeToken(User user, TokenPurpose purpose, String tokenHash, Instant expiresAt) {
+    public OneTimeToken(
+            User user,
+            TokenPurpose purpose,
+            String tokenHash,
+            Instant createdAt,
+            Instant expiresAt) {
         this.user = Objects.requireNonNull(user, "user must not be null");
         this.purpose = Objects.requireNonNull(purpose, "purpose must not be null");
         this.tokenHash = Objects.requireNonNull(tokenHash, "tokenHash must not be null");
+        this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
         this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt must not be null");
-    }
-
-    @PrePersist
-    void onCreate() {
-        createdAt = Instant.now();
     }
 
     public UUID getId() {
@@ -77,6 +77,10 @@ public class OneTimeToken {
 
     public String getTokenHash() {
         return tokenHash;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 
     public Instant getExpiresAt() {
