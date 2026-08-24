@@ -10,7 +10,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -54,18 +53,18 @@ public class AuthSession {
     protected AuthSession() {
     }
 
-    public AuthSession(User user, Instant expiresAt, String userAgent, String ipAddress) {
+    public AuthSession(
+            User user,
+            Instant createdAt,
+            Instant expiresAt,
+            String userAgent,
+            String ipAddress) {
         this.user = Objects.requireNonNull(user, "user must not be null");
+        this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
+        this.lastUsedAt = createdAt;
         this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt must not be null");
         this.userAgent = userAgent;
         this.ipAddress = ipAddress;
-    }
-
-    @PrePersist
-    void onCreate() {
-        Instant now = Instant.now();
-        createdAt = now;
-        lastUsedAt = now;
     }
 
     public UUID getId() {
