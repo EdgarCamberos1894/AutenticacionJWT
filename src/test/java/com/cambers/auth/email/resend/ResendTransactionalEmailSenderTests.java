@@ -53,7 +53,7 @@ class ResendTransactionalEmailSenderTests {
     }
 
     @Test
-    void sendsIdempotentMultipartCapableTransactionalPayloadWithoutLeakingCredentials() {
+    void sendsIdempotentTransactionalJsonPayloadWithExpectedHeaders() {
         server.expect(requestTo("https://api.resend.test/emails"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + API_KEY))
