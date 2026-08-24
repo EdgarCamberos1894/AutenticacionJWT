@@ -2,10 +2,10 @@ package com.cambers.auth.service;
 
 import com.cambers.auth.config.properties.OneTimeTokenProperties;
 import com.cambers.auth.email.VerificationTokenIssuedEvent;
+import com.cambers.auth.entity.AccountStatus;
 import com.cambers.auth.entity.OneTimeToken;
+import com.cambers.auth.entity.TokenPurpose;
 import com.cambers.auth.entity.User;
-import com.cambers.auth.enums.AccountStatus;
-import com.cambers.auth.enums.TokenPurpose;
 import com.cambers.auth.exception.BadRequestException;
 import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.repository.OneTimeTokenRepository;
