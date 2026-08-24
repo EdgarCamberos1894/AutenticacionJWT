@@ -13,8 +13,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Locale;
-
 @Service
 public class RegistrationService {
 
@@ -22,21 +20,24 @@ public class RegistrationService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationService emailVerificationService;
+    private final EmailNormalizer emailNormalizer;
 
     public RegistrationService(
             UserRepository userRepository,
             RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
-            EmailVerificationService emailVerificationService) {
+            EmailVerificationService emailVerificationService,
+            EmailNormalizer emailNormalizer) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailVerificationService = emailVerificationService;
+        this.emailNormalizer = emailNormalizer;
     }
 
     @Transactional
     public RegistrationResponse register(RegisterRequest request) {
-        String normalizedEmail = request.email().strip().toLowerCase(Locale.ROOT);
+        String normalizedEmail = emailNormalizer.normalize(request.email());
         if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new EmailAlreadyRegisteredException();
         }
