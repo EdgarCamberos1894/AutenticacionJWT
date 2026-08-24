@@ -4,7 +4,6 @@ import com.cambers.auth.dto.RegisterRequest;
 import com.cambers.auth.dto.RegistrationResponse;
 import com.cambers.auth.entity.Role;
 import com.cambers.auth.entity.User;
-import com.cambers.auth.enums.AccountStatus;
 import com.cambers.auth.enums.RoleName;
 import com.cambers.auth.exception.EmailAlreadyRegisteredException;
 import com.cambers.auth.repository.RoleRepository;
@@ -46,7 +45,6 @@ public class RegistrationService {
                 .orElseThrow(() -> new IllegalStateException("USER role is not configured"));
 
         User user = new User(normalizedEmail, passwordEncoder.encode(request.password()));
-        user.setStatus(AccountStatus.PENDING_VERIFICATION);
         user.addRole(userRole);
 
         try {
