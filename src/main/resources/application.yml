@@ -26,6 +26,8 @@ security:
     password-reset-ttl: ${PASSWORD_RESET_TTL:PT15M}
   client-ip:
     trusted-proxy-addresses: ${TRUSTED_PROXY_ADDRESSES:}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED:true}
     register:
