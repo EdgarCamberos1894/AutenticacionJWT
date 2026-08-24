@@ -48,7 +48,7 @@ Session revocation immediately prevents further refreshes. An access JWT already
 
 ### Passwords
 
-New password hashes use Argon2id. A `DelegatingPasswordEncoder` retains BCrypt support so legacy BCrypt hashes can still authenticate and be upgraded to Argon2id after a successful login. Plain-text passwords are never persisted.
+New password hashes use Argon2id. A `DelegatingPasswordEncoder` retains BCrypt support so legacy BCrypt hashes, including the unprefixed `$2a/$2b/$2y` form produced by the original implementation, can authenticate and be upgraded to Argon2id after a successful login. Plain-text passwords are never persisted.
 
 ### Account status and roles
 
@@ -83,6 +83,12 @@ If Redis is unavailable while rate limiting is enabled, the protected authentica
 `X-Forwarded-For` is consulted only when the immediate remote address is configured in `TRUSTED_PROXY_ADDRESSES`. Requests received directly from untrusted addresses cannot choose their rate-limit identity by supplying forwarding headers.
 
 Rate limiting can be disabled with `RATE_LIMIT_ENABLED=false`, which removes the enforcement wiring instead of leaving a partially active limiter.
+
+## Browser/CORS boundary
+
+CORS uses an explicit origin allowlist. Cross-origin browser access is denied when the allowlist is empty; production therefore does not open any origin by default. The `local` profile allows only `http://localhost:3000` unless `CORS_ALLOWED_ORIGINS` overrides it.
+
+Allowed cross-origin methods are limited to the methods used by the API (`GET`, `POST`, `DELETE`, `OPTIONS`), and request headers are limited to `Authorization` and `Content-Type`. Cookie credentials are not enabled. `Retry-After` and `WWW-Authenticate` are exposed so browser clients can consume authentication/rate-limit metadata.
 
 ## HTTP API
 
@@ -149,6 +155,7 @@ Local defaults:
 - JWT audience: `authentication-api`
 - Verification URL: `http://localhost:3000/verify-email`
 - Password reset URL: `http://localhost:3000/reset-password`
+- CORS origin: `http://localhost:3000`
 - JWT key pair: ephemeral 3072-bit RSA key generated for that process
 
 Because the local key pair is ephemeral, access tokens issued before an application restart will no longer validate after the restart. Production does not use ephemeral signing keys.
@@ -181,6 +188,7 @@ Core environment variables:
 | `MAIL_PASSWORD` | none | required by the current SMTP production configuration |
 | `MAIL_SMTP_AUTH` | `true` | optional |
 | `MAIL_STARTTLS` | `true` | optional |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` in `local`; empty otherwise | set explicit browser origins when cross-origin access is required |
 | `TRUSTED_PROXY_ADDRESSES` | empty | configure only known proxy/load-balancer addresses |
 | `RATE_LIMIT_ENABLED` | `true` | optional |
 
@@ -194,7 +202,7 @@ Run the complete verification suite:
 ./mvnw verify
 ```
 
-The suite includes PostgreSQL-backed authentication flows, Redis-backed rate-limit behavior, concurrent one-time-token issuance and architecture rules.
+The suite includes PostgreSQL-backed authentication flows, Redis-backed rate-limit behavior, concurrent one-time-token issuance, browser CORS preflights, legacy BCrypt migration and architecture rules.
 
 Maven Enforcer requires Java 25 and a supported Maven 3.9.x toolchain. ArchUnit prevents selected dependency inversions such as controllers accessing repositories directly or entities depending on application/HTTP/security layers.
 
@@ -203,5 +211,7 @@ GitHub Actions runs Maven verification and builds the application container imag
 ## Security boundaries and future extensions
 
 This template intentionally does not yet implement MFA/passkeys, social/OIDC login, device attestation, guaranteed email delivery through an outbox/queue, or immediate per-request revocation checks for already-issued access JWTs.
+
+Generic recovery responses reduce direct account enumeration but do not attempt artificial response-time equalization; a production system with stricter anti-enumeration requirements should move delivery behind a durable asynchronous boundary rather than adding sleeps to request threads.
 
 If bearer credentials are ever moved to cookies, revisit CSRF protection. If deployment topology changes, update `TRUSTED_PROXY_ADDRESSES` deliberately instead of trusting arbitrary forwarded headers.
