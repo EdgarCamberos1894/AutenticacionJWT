@@ -34,7 +34,7 @@ public class JwtTokenService {
         Instant issuedAt = clock.instant();
         Instant expiresAt = issuedAt.plus(properties.accessTokenTtl());
         List<String> roles = user.getRoles().stream()
-                .map(role -> role.getName().name())
+                .map(Enum::name)
                 .sorted()
                 .toList();
 
