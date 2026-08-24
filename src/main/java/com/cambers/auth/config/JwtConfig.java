@@ -10,9 +10,11 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtAudienceValidator;
 import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
@@ -32,11 +34,13 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Clock;
 import java.util.Base64;
-import java.util.List;
+import java.util.UUID;
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(JwtProperties.class)
 public class JwtConfig {
+
+    private static final int MINIMUM_RSA_BITS = 3072;
 
     @Bean
     Clock clock() {
@@ -44,11 +48,11 @@ public class JwtConfig {
     }
 
     @Bean
-    @Profile("!prod")
+    @Profile({"local", "test"})
     KeyPair ephemeralJwtKeyPair() {
         try {
             KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-            generator.initialize(3072);
+            generator.initialize(MINIMUM_RSA_BITS);
             return generator.generateKeyPair();
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("RSA key generation is not available", exception);
@@ -68,6 +72,7 @@ public class JwtConfig {
         try {
             RSAPublicKey publicKey = readPublicKey(resourceLoader.getResource(keys.publicKeyLocation()));
             RSAPrivateKey privateKey = readPrivateKey(resourceLoader.getResource(keys.privateKeyLocation()));
+            validateKeyPair(publicKey, privateKey);
             return new KeyPair(publicKey, privateKey);
         } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException exception) {
             throw new IllegalStateException("Unable to load production RSA JWT keys", exception);
@@ -87,16 +92,21 @@ public class JwtConfig {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey((RSAPublicKey) keyPair.getPublic()).build();
 
         OAuth2TokenValidator<Jwt> defaults = JwtValidators.createDefaultWithIssuer(properties.issuer());
-        OAuth2TokenValidator<Jwt> audience = new JwtClaimValidator<List<String>>(
-                "aud",
-                audiences -> audiences != null && audiences.contains(properties.audience())
-        );
+        OAuth2TokenValidator<Jwt> audience = new JwtAudienceValidator(properties.audience());
         OAuth2TokenValidator<Jwt> tokenType = new JwtClaimValidator<String>(
                 "token_type",
                 "access"::equals
         );
+        OAuth2TokenValidator<Jwt> subject = new JwtClaimValidator<String>("sub", JwtConfig::isUuid);
+        OAuth2TokenValidator<Jwt> sessionId = new JwtClaimValidator<String>("sid", JwtConfig::isUuid);
 
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(defaults, audience, tokenType));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                defaults,
+                audience,
+                tokenType,
+                subject,
+                sessionId
+        ));
         return decoder;
     }
 
@@ -126,12 +136,33 @@ public class JwtConfig {
                 .generatePrivate(new PKCS8EncodedKeySpec(encoded));
     }
 
+    private void validateKeyPair(RSAPublicKey publicKey, RSAPrivateKey privateKey) {
+        if (!publicKey.getModulus().equals(privateKey.getModulus())) {
+            throw new IllegalStateException("Configured JWT public and private keys do not belong to the same RSA key pair");
+        }
+        if (publicKey.getModulus().bitLength() < MINIMUM_RSA_BITS) {
+            throw new IllegalStateException("Production JWT RSA keys must be at least " + MINIMUM_RSA_BITS + " bits");
+        }
+    }
+
     private byte[] decodePem(Resource resource, String type) throws IOException {
         String pem = resource.getContentAsString(StandardCharsets.US_ASCII)
                 .replace("-----BEGIN " + type + "-----", "")
                 .replace("-----END " + type + "-----", "")
                 .replaceAll("\\s", "");
         return Base64.getDecoder().decode(pem);
+    }
+
+    private static boolean isUuid(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        try {
+            UUID.fromString(value);
+            return true;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 
     private boolean isBlank(String value) {
