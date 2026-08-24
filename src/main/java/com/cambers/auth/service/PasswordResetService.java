@@ -4,7 +4,6 @@ import com.cambers.auth.config.properties.OneTimeTokenProperties;
 import com.cambers.auth.email.PasswordResetTokenIssuedEvent;
 import com.cambers.auth.entity.OneTimeToken;
 import com.cambers.auth.entity.User;
-import com.cambers.auth.enums.AccountStatus;
 import com.cambers.auth.enums.TokenPurpose;
 import com.cambers.auth.exception.BadRequestException;
 import com.cambers.auth.exception.ProblemCode;
@@ -20,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.UUID;
 
 @Service
 public class PasswordResetService {
@@ -55,36 +55,44 @@ public class PasswordResetService {
     @Transactional
     public void requestReset(String email) {
         String normalizedEmail = email.strip().toLowerCase(Locale.ROOT);
-        userRepository.findByEmailIgnoreCase(normalizedEmail)
-                .filter(User::isEmailVerified)
-                .filter(user -> user.getStatus() == AccountStatus.ACTIVE)
-                .ifPresent(this::issueResetToken);
+        userRepository.findByEmailIgnoreCaseForUpdate(normalizedEmail)
+                .filter(User::isAuthenticationAllowed)
+                .ifPresent(this::issueResetTokenForLockedUser);
     }
 
     @Transactional
     public void confirmReset(String rawToken, String newPassword) {
         String tokenHash = tokenGenerator.hash(rawToken);
+        UUID userId = oneTimeTokenRepository.findUserIdByTokenHash(tokenHash)
+                .orElseThrow(this::invalidResetToken);
+
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(this::invalidResetToken);
         OneTimeToken token = oneTimeTokenRepository.findByTokenHashForUpdate(tokenHash)
                 .orElseThrow(this::invalidResetToken);
 
         Instant now = clock.instant();
-        if (token.getPurpose() != TokenPurpose.RESET_PASSWORD || token.isConsumed() || token.isExpired(now)) {
+        if (!token.getUser().getId().equals(userId)
+                || token.getPurpose() != TokenPurpose.RESET_PASSWORD
+                || !token.isUsableAt(now)
+                || !user.isAuthenticationAllowed()) {
             throw invalidResetToken();
         }
 
-        User user = token.getUser();
-        if (!user.isEmailVerified() || user.getStatus() != AccountStatus.ACTIVE) {
-            throw invalidResetToken();
-        }
-
-        oneTimeTokenRepository.consumeActiveTokens(user.getId(), TokenPurpose.RESET_PASSWORD, now);
+        token.consume(now);
+        oneTimeTokenRepository.invalidateOtherActiveTokens(
+                userId,
+                TokenPurpose.RESET_PASSWORD,
+                token.getId(),
+                now
+        );
         user.setPasswordHash(passwordEncoder.encode(newPassword));
-        sessionManagementService.revokeAllForPasswordReset(user.getId());
+        sessionManagementService.revokeAllForPasswordReset(userId);
     }
 
-    private void issueResetToken(User user) {
+    private void issueResetTokenForLockedUser(User user) {
         Instant now = clock.instant();
-        oneTimeTokenRepository.consumeActiveTokens(user.getId(), TokenPurpose.RESET_PASSWORD, now);
+        oneTimeTokenRepository.invalidateActiveTokens(user.getId(), TokenPurpose.RESET_PASSWORD, now);
 
         GeneratedOpaqueToken generatedToken = tokenGenerator.generate();
         Instant expiresAt = now.plus(properties.passwordResetTtl());
