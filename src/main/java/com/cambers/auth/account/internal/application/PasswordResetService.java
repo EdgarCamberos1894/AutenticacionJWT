@@ -1,4 +1,4 @@
-package com.cambers.auth.service;
+package com.cambers.auth.account.internal.application;
 
 import com.cambers.auth.config.properties.OneTimeTokenProperties;
 import com.cambers.auth.email.outbox.EmailOutboxService;
@@ -17,6 +17,8 @@ import com.cambers.auth.repository.OneTimeTokenRepository;
 import com.cambers.auth.repository.UserRepository;
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
 import com.cambers.auth.security.token.SecureOpaqueTokenGenerator;
+import com.cambers.auth.service.EmailNormalizer;
+import com.cambers.auth.service.SessionRevocationService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

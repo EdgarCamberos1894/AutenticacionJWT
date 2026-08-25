@@ -1,4 +1,4 @@
-package com.cambers.auth.service;
+package com.cambers.auth.account.internal.application;
 
 import com.cambers.auth.dto.RegisterRequest;
 import com.cambers.auth.dto.RegistrationResponse;
@@ -11,6 +11,7 @@ import com.cambers.auth.observability.SecurityAuditOutcome;
 import com.cambers.auth.observability.SecurityAuditPublisher;
 import com.cambers.auth.observability.SecurityAuditReason;
 import com.cambers.auth.repository.UserRepository;
+import com.cambers.auth.service.EmailNormalizer;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
