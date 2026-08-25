@@ -1,12 +1,12 @@
 package com.cambers.auth.authentication.internal.web;
 
+import com.cambers.auth.authentication.AuthSessionResponse;
 import com.cambers.auth.authentication.AuthenticationClientMetadata;
+import com.cambers.auth.authentication.LoginRequest;
+import com.cambers.auth.authentication.RefreshTokenRequest;
 import com.cambers.auth.authentication.SessionAuthentication;
 import com.cambers.auth.authentication.SessionManagement;
-import com.cambers.auth.dto.AuthSessionResponse;
-import com.cambers.auth.dto.LoginRequest;
-import com.cambers.auth.dto.RefreshTokenRequest;
-import com.cambers.auth.dto.TokenPairResponse;
+import com.cambers.auth.authentication.TokenPairResponse;
 import com.cambers.auth.ratelimit.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;

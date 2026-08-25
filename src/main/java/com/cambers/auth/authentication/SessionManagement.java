@@ -1,7 +1,5 @@
 package com.cambers.auth.authentication;
 
-import com.cambers.auth.dto.AuthSessionResponse;
-
 import java.util.List;
 import java.util.UUID;
 
