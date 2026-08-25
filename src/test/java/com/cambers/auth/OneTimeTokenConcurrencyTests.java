@@ -1,13 +1,13 @@
 package com.cambers.auth;
 
+import com.cambers.auth.account.AccountRegistration;
+import com.cambers.auth.account.EmailVerification;
 import com.cambers.auth.dto.RegisterRequest;
 import com.cambers.auth.entity.OneTimeToken;
 import com.cambers.auth.repository.AuthSessionRepository;
 import com.cambers.auth.repository.OneTimeTokenRepository;
 import com.cambers.auth.repository.RefreshTokenRepository;
 import com.cambers.auth.repository.UserRepository;
-import com.cambers.auth.service.EmailVerificationService;
-import com.cambers.auth.service.RegistrationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,10 +38,10 @@ class OneTimeTokenConcurrencyTests {
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
 
     @Autowired
-    private RegistrationService registrationService;
+    private AccountRegistration accountRegistration;
 
     @Autowired
-    private EmailVerificationService emailVerificationService;
+    private EmailVerification emailVerification;
 
     @Autowired
     private OneTimeTokenRepository oneTimeTokenRepository;
@@ -65,7 +65,7 @@ class OneTimeTokenConcurrencyTests {
 
     @Test
     void concurrentVerificationResendsLeaveExactlyOneActiveToken() throws Exception {
-        registrationService.register(new RegisterRequest(EMAIL, PASSWORD));
+        accountRegistration.register(new RegisterRequest(EMAIL, PASSWORD));
 
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
@@ -95,7 +95,7 @@ class OneTimeTokenConcurrencyTests {
             if (!start.await(5, TimeUnit.SECONDS)) {
                 throw new IllegalStateException("Concurrent verification test did not start in time");
             }
-            emailVerificationService.resend(EMAIL);
+            emailVerification.resend(EMAIL);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Concurrent verification test was interrupted", exception);

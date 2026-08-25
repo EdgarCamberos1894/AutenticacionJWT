@@ -22,6 +22,7 @@ class ModularArchitectureTests {
                 .collect(Collectors.toSet());
 
         assertThat(identifiers).containsExactlyInAnyOrder(
+                "account",
                 "delivery",
                 "observability",
                 "abuse"

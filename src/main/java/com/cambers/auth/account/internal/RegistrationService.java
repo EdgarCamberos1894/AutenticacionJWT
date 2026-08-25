@@ -1,5 +1,6 @@
-package com.cambers.auth.service;
+package com.cambers.auth.account.internal;
 
+import com.cambers.auth.account.AccountRegistration;
 import com.cambers.auth.dto.RegisterRequest;
 import com.cambers.auth.dto.RegistrationResponse;
 import com.cambers.auth.entity.RoleName;
@@ -11,6 +12,7 @@ import com.cambers.auth.observability.SecurityAuditOutcome;
 import com.cambers.auth.observability.SecurityAuditPublisher;
 import com.cambers.auth.observability.SecurityAuditReason;
 import com.cambers.auth.repository.UserRepository;
+import com.cambers.auth.service.EmailNormalizer;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,7 +22,7 @@ import java.time.Clock;
 import java.time.Instant;
 
 @Service
-public class RegistrationService {
+public class RegistrationService implements AccountRegistration {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -44,6 +46,7 @@ public class RegistrationService {
         this.clock = clock;
     }
 
+    @Override
     @Transactional
     public RegistrationResponse register(RegisterRequest request) {
         String normalizedEmail = emailNormalizer.normalize(request.email());

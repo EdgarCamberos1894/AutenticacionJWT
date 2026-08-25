@@ -1,8 +1,9 @@
-package com.cambers.auth.service;
+package com.cambers.auth.account.internal;
 
+import com.cambers.auth.account.PasswordRecovery;
+import com.cambers.auth.account.PasswordResetCompleted;
 import com.cambers.auth.config.properties.OneTimeTokenProperties;
 import com.cambers.auth.email.AuthenticationEmailDelivery;
-import com.cambers.auth.entity.AccountStatus;
 import com.cambers.auth.entity.OneTimeToken;
 import com.cambers.auth.entity.TokenPurpose;
 import com.cambers.auth.entity.User;
@@ -17,6 +18,9 @@ import com.cambers.auth.repository.OneTimeTokenRepository;
 import com.cambers.auth.repository.UserRepository;
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
 import com.cambers.auth.security.token.SecureOpaqueTokenGenerator;
+import com.cambers.auth.service.EmailNormalizer;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,53 +30,52 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Service
-public class EmailVerificationService {
+public class PasswordResetService implements PasswordRecovery {
 
     private final OneTimeTokenRepository oneTimeTokenRepository;
     private final UserRepository userRepository;
     private final SecureOpaqueTokenGenerator tokenGenerator;
     private final OneTimeTokenProperties properties;
+    private final PasswordEncoder passwordEncoder;
     private final AuthenticationEmailDelivery emailDelivery;
     private final EmailNormalizer emailNormalizer;
     private final SecurityAuditPublisher auditPublisher;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
-    public EmailVerificationService(
+    public PasswordResetService(
             OneTimeTokenRepository oneTimeTokenRepository,
             UserRepository userRepository,
             SecureOpaqueTokenGenerator tokenGenerator,
             OneTimeTokenProperties properties,
+            PasswordEncoder passwordEncoder,
             AuthenticationEmailDelivery emailDelivery,
             EmailNormalizer emailNormalizer,
             SecurityAuditPublisher auditPublisher,
+            ApplicationEventPublisher eventPublisher,
             Clock clock) {
         this.oneTimeTokenRepository = oneTimeTokenRepository;
         this.userRepository = userRepository;
         this.tokenGenerator = tokenGenerator;
         this.properties = properties;
+        this.passwordEncoder = passwordEncoder;
         this.emailDelivery = emailDelivery;
         this.emailNormalizer = emailNormalizer;
         this.auditPublisher = auditPublisher;
+        this.eventPublisher = eventPublisher;
         this.clock = clock;
     }
 
+    @Override
     @Transactional
-    public void issueVerification(User user) {
-        User lockedUser = userRepository.findByIdForUpdate(user.getId())
-                .orElseThrow(() -> new IllegalStateException("Cannot issue verification for a missing user"));
-        issueVerificationForLockedUser(lockedUser);
-    }
-
-    @Transactional
-    public void resend(String email) {
+    public void requestReset(String email) {
         String normalizedEmail = emailNormalizer.normalize(email);
         userRepository.findByEmailIgnoreCaseForUpdate(normalizedEmail)
-                .filter(user -> !user.isEmailVerified())
-                .filter(user -> user.getStatus() == AccountStatus.PENDING_VERIFICATION)
-                .ifPresent(this::issueVerificationForLockedUser);
+                .filter(User::isAuthenticationAllowed)
+                .ifPresent(this::issueResetTokenForLockedUser);
 
         auditPublisher.afterCommit(SecurityAuditEvent.of(
-                SecurityAuditAction.EMAIL_VERIFICATION_REQUEST,
+                SecurityAuditAction.PASSWORD_RESET_REQUEST,
                 SecurityAuditOutcome.ACCEPTED,
                 SecurityAuditReason.NONE,
                 null,
@@ -80,64 +83,66 @@ public class EmailVerificationService {
         ));
     }
 
+    @Override
     @Transactional
-    public void confirm(String rawToken) {
+    public void confirmReset(String rawToken, String newPassword) {
         String tokenHash = tokenGenerator.hash(rawToken);
         UUID userId = oneTimeTokenRepository.findUserIdByTokenHash(tokenHash)
-                .orElseThrow(this::invalidVerificationToken);
+                .orElseThrow(this::invalidResetToken);
 
         User user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(this::invalidVerificationToken);
+                .orElseThrow(this::invalidResetToken);
         OneTimeToken token = oneTimeTokenRepository.findByTokenHashForUpdate(tokenHash)
-                .orElseThrow(this::invalidVerificationToken);
+                .orElseThrow(this::invalidResetToken);
 
         Instant now = clock.instant();
         if (!token.getUser().getId().equals(userId)
-                || token.getPurpose() != TokenPurpose.VERIFY_EMAIL
+                || token.getPurpose() != TokenPurpose.RESET_PASSWORD
                 || !token.isUsableAt(now)
-                || user.getStatus() != AccountStatus.PENDING_VERIFICATION) {
-            throw invalidVerificationToken();
+                || !user.isAuthenticationAllowed()) {
+            throw invalidResetToken();
         }
 
         token.consume(now);
         oneTimeTokenRepository.invalidateOtherActiveTokens(
                 userId,
-                TokenPurpose.VERIFY_EMAIL,
+                TokenPurpose.RESET_PASSWORD,
                 token.getId(),
                 now
         );
-        user.verifyEmail(now);
+        user.changePasswordHash(passwordEncoder.encode(newPassword), now);
+
+        // Published synchronously. Authentication's listener joins this transaction, so
+        // password replacement and session-family revocation commit or roll back together.
+        eventPublisher.publishEvent(new PasswordResetCompleted(userId));
+
         auditPublisher.afterCommit(SecurityAuditEvent.of(
-                SecurityAuditAction.EMAIL_VERIFICATION_CONFIRM,
+                SecurityAuditAction.PASSWORD_RESET_CONFIRM,
                 SecurityAuditOutcome.SUCCESS,
-                SecurityAuditReason.NONE,
+                SecurityAuditReason.PASSWORD_RESET,
                 userId,
                 null
         ));
     }
 
-    private void issueVerificationForLockedUser(User user) {
-        if (user.isEmailVerified() || user.getStatus() != AccountStatus.PENDING_VERIFICATION) {
-            return;
-        }
-
+    private void issueResetTokenForLockedUser(User user) {
         Instant now = clock.instant();
-        oneTimeTokenRepository.findActiveTokenId(user.getId(), TokenPurpose.VERIFY_EMAIL)
+        oneTimeTokenRepository.findActiveTokenId(user.getId(), TokenPurpose.RESET_PASSWORD)
                 .ifPresent(issuanceId -> emailDelivery.cancelSuperseded(issuanceId, now));
-        oneTimeTokenRepository.invalidateActiveTokens(user.getId(), TokenPurpose.VERIFY_EMAIL, now);
+        oneTimeTokenRepository.invalidateActiveTokens(user.getId(), TokenPurpose.RESET_PASSWORD, now);
 
         GeneratedOpaqueToken generatedToken = tokenGenerator.generate();
-        Instant expiresAt = now.plus(properties.emailVerificationTtl());
+        Instant expiresAt = now.plus(properties.passwordResetTtl());
         OneTimeToken token = oneTimeTokenRepository.save(new OneTimeToken(
                 user,
-                TokenPurpose.VERIFY_EMAIL,
+                TokenPurpose.RESET_PASSWORD,
                 generatedToken.hash(),
                 now,
                 expiresAt
         ));
-        UUID issuanceId = Objects.requireNonNull(token.getId(), "Persisted verification token must have an id");
+        UUID issuanceId = Objects.requireNonNull(token.getId(), "Persisted password-reset token must have an id");
 
-        emailDelivery.enqueueVerification(
+        emailDelivery.enqueuePasswordReset(
                 issuanceId,
                 user.getEmail(),
                 generatedToken.value(),
@@ -146,17 +151,17 @@ public class EmailVerificationService {
         );
     }
 
-    private BadRequestException invalidVerificationToken() {
+    private BadRequestException invalidResetToken() {
         auditPublisher.now(SecurityAuditEvent.of(
-                SecurityAuditAction.EMAIL_VERIFICATION_CONFIRM,
+                SecurityAuditAction.PASSWORD_RESET_CONFIRM,
                 SecurityAuditOutcome.FAILURE,
-                SecurityAuditReason.INVALID_VERIFICATION_TOKEN,
+                SecurityAuditReason.INVALID_PASSWORD_RESET_TOKEN,
                 null,
                 null
         ));
         return new BadRequestException(
-                ProblemCode.INVALID_VERIFICATION_TOKEN,
-                "The email verification token is invalid or expired."
+                ProblemCode.INVALID_PASSWORD_RESET_TOKEN,
+                "The password reset token is invalid or expired."
         );
     }
 }
