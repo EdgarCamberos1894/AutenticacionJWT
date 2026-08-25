@@ -3,9 +3,9 @@ package com.cambers.auth.email.resend;
 import com.cambers.auth.email.EmailTag;
 import com.cambers.auth.email.TransactionalEmail;
 import com.cambers.auth.email.outbox.EmailDeliveryStatus;
-import com.cambers.auth.email.outbox.EmailOutboxClaimService;
 import com.cambers.auth.email.outbox.EmailOutboxCrypto;
 import com.cambers.auth.email.outbox.EmailOutboxMessage;
+import com.cambers.auth.email.outbox.EmailOutboxProcessingService;
 import com.cambers.auth.email.outbox.EmailOutboxPurpose;
 import com.cambers.auth.email.outbox.EmailOutboxRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,7 +48,7 @@ class ResendWebhookIntegrationTests {
     @Autowired private MockMvc mockMvc;
     @Autowired private EmailOutboxRepository outboxRepository;
     @Autowired private EmailOutboxCrypto outboxCrypto;
-    @Autowired private EmailOutboxClaimService claimService;
+    @Autowired private EmailOutboxProcessingService processingService;
     @Autowired private ResendWebhookEventRepository eventRepository;
 
     @BeforeEach
@@ -80,7 +80,7 @@ class ResendWebhookIntegrationTests {
     @Test
     void webhookArrivingBeforeProviderAcceptanceIsReconciledAfterAcceptanceCommits() throws Exception {
         EmailOutboxMessage message = outboxRepository.saveAndFlush(pendingOutboxMessage());
-        var claimed = claimService.claimNext("worker-a").orElseThrow();
+        var claimed = processingService.claimNext("worker-a").orElseThrow();
         Instant deliveredAt = Instant.now();
 
         performSignedWebhook(
@@ -100,14 +100,14 @@ class ResendWebhookIntegrationTests {
         assertThat(outboxRepository.findById(message.getId()).orElseThrow().getDeliveryStatus())
                 .isEqualTo(EmailDeliveryStatus.QUEUED);
 
-        boolean accepted = claimService.markAccepted(
+        boolean accepted = processingService.markAccepted(
                 claimed.id(),
                 "worker-a",
                 PROVIDER_MESSAGE_ID
         );
         assertThat(accepted).isTrue();
 
-        claimService.reconcileProviderDeliveryStatus(claimed.id(), PROVIDER_MESSAGE_ID);
+        processingService.reconcileProviderDeliveryStatus(claimed.id(), PROVIDER_MESSAGE_ID);
 
         EmailOutboxMessage reconciled = outboxRepository.findById(message.getId()).orElseThrow();
         assertThat(reconciled.getDeliveryStatus()).isEqualTo(EmailDeliveryStatus.DELIVERED);
