@@ -1,7 +1,7 @@
 package com.cambers.auth.service;
 
 import com.cambers.auth.config.properties.OneTimeTokenProperties;
-import com.cambers.auth.email.outbox.EmailOutboxService;
+import com.cambers.auth.email.AuthenticationEmailDelivery;
 import com.cambers.auth.entity.AccountStatus;
 import com.cambers.auth.entity.OneTimeToken;
 import com.cambers.auth.entity.TokenPurpose;
@@ -32,7 +32,7 @@ public class EmailVerificationService {
     private final UserRepository userRepository;
     private final SecureOpaqueTokenGenerator tokenGenerator;
     private final OneTimeTokenProperties properties;
-    private final EmailOutboxService emailOutboxService;
+    private final AuthenticationEmailDelivery emailDelivery;
     private final EmailNormalizer emailNormalizer;
     private final SecurityAuditPublisher auditPublisher;
     private final Clock clock;
@@ -42,7 +42,7 @@ public class EmailVerificationService {
             UserRepository userRepository,
             SecureOpaqueTokenGenerator tokenGenerator,
             OneTimeTokenProperties properties,
-            EmailOutboxService emailOutboxService,
+            AuthenticationEmailDelivery emailDelivery,
             EmailNormalizer emailNormalizer,
             SecurityAuditPublisher auditPublisher,
             Clock clock) {
@@ -50,7 +50,7 @@ public class EmailVerificationService {
         this.userRepository = userRepository;
         this.tokenGenerator = tokenGenerator;
         this.properties = properties;
-        this.emailOutboxService = emailOutboxService;
+        this.emailDelivery = emailDelivery;
         this.emailNormalizer = emailNormalizer;
         this.auditPublisher = auditPublisher;
         this.clock = clock;
@@ -123,7 +123,7 @@ public class EmailVerificationService {
 
         Instant now = clock.instant();
         oneTimeTokenRepository.findActiveTokenId(user.getId(), TokenPurpose.VERIFY_EMAIL)
-                .ifPresent(issuanceId -> emailOutboxService.cancelSuperseded(issuanceId, now));
+                .ifPresent(issuanceId -> emailDelivery.cancelSuperseded(issuanceId, now));
         oneTimeTokenRepository.invalidateActiveTokens(user.getId(), TokenPurpose.VERIFY_EMAIL, now);
 
         GeneratedOpaqueToken generatedToken = tokenGenerator.generate();
@@ -137,7 +137,7 @@ public class EmailVerificationService {
         ));
         UUID issuanceId = Objects.requireNonNull(token.getId(), "Persisted verification token must have an id");
 
-        emailOutboxService.enqueueVerification(
+        emailDelivery.enqueueVerification(
                 issuanceId,
                 user.getEmail(),
                 generatedToken.value(),
