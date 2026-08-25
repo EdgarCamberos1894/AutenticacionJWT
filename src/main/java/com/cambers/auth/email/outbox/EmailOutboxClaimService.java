@@ -43,7 +43,7 @@ public class EmailOutboxClaimService {
             return Optional.empty();
         }
 
-        EmailOutboxMessage message = repository.findById(id.get())
+        EmailOutboxMessage message = repository.findByIdForUpdate(id.get())
                 .orElseThrow(() -> new IllegalStateException("Claimed email outbox message disappeared"));
         message.claim(workerId, now);
         return Optional.of(snapshot(message));
@@ -51,7 +51,7 @@ public class EmailOutboxClaimService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean markAccepted(UUID messageId, String workerId, String providerMessageId) {
-        EmailOutboxMessage message = repository.findById(messageId)
+        EmailOutboxMessage message = repository.findByIdForUpdate(messageId)
                 .orElseThrow(() -> new IllegalStateException("Email outbox message disappeared before completion"));
         if (!message.isOwnedBy(workerId)) {
             log.warn("Ignoring stale email outbox completion messageId={}", messageId);
@@ -64,7 +64,7 @@ public class EmailOutboxClaimService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void reconcileProviderDeliveryStatus(UUID messageId, String providerMessageId) {
-        EmailOutboxMessage message = repository.findById(messageId)
+        EmailOutboxMessage message = repository.findByIdForUpdate(messageId)
                 .orElseThrow(() -> new IllegalStateException("Email outbox message disappeared before delivery reconciliation"));
         if (!providerMessageId.equals(message.getProviderMessageId())) {
             return;
@@ -81,7 +81,7 @@ public class EmailOutboxClaimService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailure(UUID messageId, String workerId, boolean retryable, String errorCode) {
-        EmailOutboxMessage message = repository.findById(messageId)
+        EmailOutboxMessage message = repository.findByIdForUpdate(messageId)
                 .orElseThrow(() -> new IllegalStateException("Email outbox message disappeared before failure handling"));
         if (!message.isOwnedBy(workerId)) {
             log.warn("Ignoring stale email outbox failure messageId={}", messageId);
