@@ -19,13 +19,13 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> 
     @Query("""
             select session
             from AuthSession session
-            where session.user.id = :userId
+            where session.accountId = :accountId
               and session.revokedAt is null
               and session.expiresAt > :now
             order by session.createdAt desc
             """)
-    List<AuthSession> findActiveByUserId(
-            @Param("userId") UUID userId,
+    List<AuthSession> findActiveByAccountId(
+            @Param("accountId") UUID accountId,
             @Param("now") Instant now
     );
 
@@ -38,11 +38,11 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> 
             select session
             from AuthSession session
             where session.id = :sessionId
-              and session.user.id = :userId
+              and session.accountId = :accountId
             """)
-    Optional<AuthSession> findByIdAndUserIdForUpdate(
+    Optional<AuthSession> findByIdAndAccountIdForUpdate(
             @Param("sessionId") UUID sessionId,
-            @Param("userId") UUID userId
+            @Param("accountId") UUID accountId
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -50,11 +50,11 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> 
             update AuthSession session
             set session.revokedAt = :revokedAt,
                 session.revocationReason = :reason
-            where session.user.id = :userId
+            where session.accountId = :accountId
               and session.revokedAt is null
             """)
-    int revokeAllActiveByUserId(
-            @Param("userId") UUID userId,
+    int revokeAllActiveByAccountId(
+            @Param("accountId") UUID accountId,
             @Param("revokedAt") Instant revokedAt,
             @Param("reason") SessionRevocationReason reason
     );
