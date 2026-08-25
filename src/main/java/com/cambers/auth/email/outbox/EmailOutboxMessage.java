@@ -38,6 +38,9 @@ public class EmailOutboxMessage {
     @Column(name = "delivery_status", nullable = false, length = 24)
     private EmailDeliveryStatus deliveryStatus;
 
+    @Column(name = "delivery_status_at")
+    private Instant deliveryStatusAt;
+
     @Column(name = "attempt_count", nullable = false)
     private int attemptCount;
 
@@ -84,6 +87,7 @@ public class EmailOutboxMessage {
         this.ciphertext = payload.ciphertext().clone();
         this.status = EmailOutboxStatus.PENDING;
         this.deliveryStatus = EmailDeliveryStatus.QUEUED;
+        this.deliveryStatusAt = now;
         this.nextAttemptAt = now;
         this.expiresAt = expiresAt;
         this.createdAt = now;
@@ -104,10 +108,10 @@ public class EmailOutboxMessage {
 
     public void markAccepted(String providerMessageId, Instant now) {
         this.status = EmailOutboxStatus.SENT;
-        this.deliveryStatus = EmailDeliveryStatus.ACCEPTED;
         this.providerMessageId = providerMessageId;
         this.sentAt = now;
         this.lastErrorCode = null;
+        applyDeliveryStatus(EmailDeliveryStatus.ACCEPTED, now, now);
         clearLease();
         this.updatedAt = now;
     }
@@ -122,15 +126,21 @@ public class EmailOutboxMessage {
 
     public void markDead(String errorCode, Instant now) {
         this.status = EmailOutboxStatus.DEAD;
-        this.deliveryStatus = EmailDeliveryStatus.FAILED;
         this.lastErrorCode = errorCode;
+        applyDeliveryStatus(EmailDeliveryStatus.FAILED, now, now);
         clearLease();
         this.updatedAt = now;
     }
 
-    public void applyDeliveryStatus(EmailDeliveryStatus deliveryStatus, Instant now) {
-        this.deliveryStatus = deliveryStatus;
-        this.updatedAt = now;
+    public void applyDeliveryStatus(EmailDeliveryStatus newStatus, Instant eventTime, Instant now) {
+        if (deliveryStatus == null
+                || newStatus.precedence() > deliveryStatus.precedence()
+                || (newStatus.precedence() == deliveryStatus.precedence()
+                    && (deliveryStatusAt == null || !eventTime.isBefore(deliveryStatusAt)))) {
+            this.deliveryStatus = newStatus;
+            this.deliveryStatusAt = eventTime;
+            this.updatedAt = now;
+        }
     }
 
     private void clearLease() {
@@ -145,6 +155,7 @@ public class EmailOutboxMessage {
     public byte[] getCiphertext() { return ciphertext.clone(); }
     public EmailOutboxStatus getStatus() { return status; }
     public EmailDeliveryStatus getDeliveryStatus() { return deliveryStatus; }
+    public Instant getDeliveryStatusAt() { return deliveryStatusAt; }
     public int getAttemptCount() { return attemptCount; }
     public Instant getNextAttemptAt() { return nextAttemptAt; }
     public Instant getExpiresAt() { return expiresAt; }
