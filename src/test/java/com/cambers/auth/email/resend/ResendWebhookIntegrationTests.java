@@ -88,11 +88,15 @@ class ResendWebhookIntegrationTests {
                 webhookBody("email.delivered", deliveredAt)
         ).andExpect(status().isNoContent());
         performSignedWebhook(
+                "msg_early_delayed",
+                webhookBody("email.delivery_delayed", deliveredAt.plusSeconds(1))
+        ).andExpect(status().isNoContent());
+        performSignedWebhook(
                 "msg_early_opened",
-                webhookBody("email.opened", deliveredAt.plusSeconds(1))
+                webhookBody("email.opened", deliveredAt.plusSeconds(2))
         ).andExpect(status().isNoContent());
 
-        assertThat(eventRepository.count()).isEqualTo(2);
+        assertThat(eventRepository.count()).isEqualTo(3);
         assertThat(outboxRepository.findById(message.getId()).orElseThrow().getDeliveryStatus())
                 .isEqualTo(EmailDeliveryStatus.QUEUED);
 
