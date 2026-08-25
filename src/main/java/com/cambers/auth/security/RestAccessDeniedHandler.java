@@ -1,6 +1,11 @@
 package com.cambers.auth.security;
 
 import com.cambers.auth.exception.ProblemCode;
+import com.cambers.auth.observability.SecurityAuditAction;
+import com.cambers.auth.observability.SecurityAuditEvent;
+import com.cambers.auth.observability.SecurityAuditOutcome;
+import com.cambers.auth.observability.SecurityAuditPublisher;
+import com.cambers.auth.observability.SecurityAuditReason;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,9 +20,13 @@ import java.io.IOException;
 public class RestAccessDeniedHandler implements AccessDeniedHandler {
 
     private final SecurityProblemWriter problemWriter;
+    private final SecurityAuditPublisher auditPublisher;
 
-    public RestAccessDeniedHandler(SecurityProblemWriter problemWriter) {
+    public RestAccessDeniedHandler(
+            SecurityProblemWriter problemWriter,
+            SecurityAuditPublisher auditPublisher) {
         this.problemWriter = problemWriter;
+        this.auditPublisher = auditPublisher;
     }
 
     @Override
@@ -26,6 +35,13 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
             HttpServletResponse response,
             AccessDeniedException accessDeniedException) throws IOException, ServletException {
 
+        auditPublisher.now(SecurityAuditEvent.of(
+                SecurityAuditAction.AUTHORIZATION,
+                SecurityAuditOutcome.DENIED,
+                SecurityAuditReason.ACCESS_DENIED,
+                null,
+                null
+        ));
         problemWriter.write(
                 request,
                 response,

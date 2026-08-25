@@ -7,6 +7,11 @@ import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.User;
 import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.exception.UnauthorizedException;
+import com.cambers.auth.observability.SecurityAuditAction;
+import com.cambers.auth.observability.SecurityAuditEvent;
+import com.cambers.auth.observability.SecurityAuditOutcome;
+import com.cambers.auth.observability.SecurityAuditPublisher;
+import com.cambers.auth.observability.SecurityAuditReason;
 import com.cambers.auth.ratelimit.LoginRateLimitService;
 import com.cambers.auth.repository.AuthSessionRepository;
 import com.cambers.auth.repository.UserRepository;
@@ -27,6 +32,7 @@ public class LoginService {
     private final LoginRateLimitService loginRateLimitService;
     private final EmailNormalizer emailNormalizer;
     private final SessionProperties sessionProperties;
+    private final SecurityAuditPublisher auditPublisher;
     private final Clock clock;
     private final String dummyPasswordHash;
 
@@ -38,6 +44,7 @@ public class LoginService {
             LoginRateLimitService loginRateLimitService,
             EmailNormalizer emailNormalizer,
             SessionProperties sessionProperties,
+            SecurityAuditPublisher auditPublisher,
             Clock clock) {
         this.userRepository = userRepository;
         this.authSessionRepository = authSessionRepository;
@@ -46,6 +53,7 @@ public class LoginService {
         this.loginRateLimitService = loginRateLimitService;
         this.emailNormalizer = emailNormalizer;
         this.sessionProperties = sessionProperties;
+        this.auditPublisher = auditPublisher;
         this.clock = clock;
         this.dummyPasswordHash = passwordEncoder.encode("authentication-service-dummy-password");
     }
@@ -83,7 +91,15 @@ public class LoginService {
                 clientMetadata.ipAddress()
         ));
 
-        return tokenPairIssuer.issue(user, session, null);
+        TokenPairResponse response = tokenPairIssuer.issue(user, session, null);
+        auditPublisher.afterCommit(SecurityAuditEvent.of(
+                SecurityAuditAction.LOGIN,
+                SecurityAuditOutcome.SUCCESS,
+                SecurityAuditReason.NONE,
+                user.getId(),
+                session.getId()
+        ));
+        return response;
     }
 
     private boolean requiresPasswordUpgrade(String passwordHash) {
@@ -97,6 +113,13 @@ public class LoginService {
     }
 
     private UnauthorizedException invalidCredentials() {
+        auditPublisher.now(SecurityAuditEvent.of(
+                SecurityAuditAction.LOGIN,
+                SecurityAuditOutcome.FAILURE,
+                SecurityAuditReason.INVALID_CREDENTIALS,
+                null,
+                null
+        ));
         return new UnauthorizedException(
                 ProblemCode.INVALID_CREDENTIALS,
                 "The supplied credentials are invalid."
