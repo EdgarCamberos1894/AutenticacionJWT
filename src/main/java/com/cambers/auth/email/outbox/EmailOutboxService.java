@@ -1,6 +1,7 @@
 package com.cambers.auth.email.outbox;
 
 import com.cambers.auth.email.AuthenticationEmailComposer;
+import com.cambers.auth.email.AuthenticationEmailDelivery;
 import com.cambers.auth.email.TransactionalEmail;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -10,7 +11,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Service
-public class EmailOutboxService {
+public class EmailOutboxService implements AuthenticationEmailDelivery {
 
     private final AuthenticationEmailComposer composer;
     private final EmailOutboxCrypto crypto;
@@ -25,6 +26,7 @@ public class EmailOutboxService {
         this.repository = repository;
     }
 
+    @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void enqueueVerification(
             UUID issuanceId,
@@ -41,6 +43,7 @@ public class EmailOutboxService {
         );
     }
 
+    @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void enqueuePasswordReset(
             UUID issuanceId,
@@ -57,6 +60,7 @@ public class EmailOutboxService {
         );
     }
 
+    @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void cancelSuperseded(UUID issuanceId, Instant now) {
         repository.findByIdForUpdate(issuanceId)

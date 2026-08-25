@@ -1,7 +1,7 @@
 package com.cambers.auth.service;
 
 import com.cambers.auth.config.properties.OneTimeTokenProperties;
-import com.cambers.auth.email.outbox.EmailOutboxService;
+import com.cambers.auth.email.AuthenticationEmailDelivery;
 import com.cambers.auth.entity.OneTimeToken;
 import com.cambers.auth.entity.SessionRevocationReason;
 import com.cambers.auth.entity.TokenPurpose;
@@ -35,7 +35,7 @@ public class PasswordResetService {
     private final OneTimeTokenProperties properties;
     private final PasswordEncoder passwordEncoder;
     private final SessionRevocationService sessionRevocationService;
-    private final EmailOutboxService emailOutboxService;
+    private final AuthenticationEmailDelivery emailDelivery;
     private final EmailNormalizer emailNormalizer;
     private final SecurityAuditPublisher auditPublisher;
     private final Clock clock;
@@ -47,7 +47,7 @@ public class PasswordResetService {
             OneTimeTokenProperties properties,
             PasswordEncoder passwordEncoder,
             SessionRevocationService sessionRevocationService,
-            EmailOutboxService emailOutboxService,
+            AuthenticationEmailDelivery emailDelivery,
             EmailNormalizer emailNormalizer,
             SecurityAuditPublisher auditPublisher,
             Clock clock) {
@@ -57,7 +57,7 @@ public class PasswordResetService {
         this.properties = properties;
         this.passwordEncoder = passwordEncoder;
         this.sessionRevocationService = sessionRevocationService;
-        this.emailOutboxService = emailOutboxService;
+        this.emailDelivery = emailDelivery;
         this.emailNormalizer = emailNormalizer;
         this.auditPublisher = auditPublisher;
         this.clock = clock;
@@ -119,7 +119,7 @@ public class PasswordResetService {
     private void issueResetTokenForLockedUser(User user) {
         Instant now = clock.instant();
         oneTimeTokenRepository.findActiveTokenId(user.getId(), TokenPurpose.RESET_PASSWORD)
-                .ifPresent(issuanceId -> emailOutboxService.cancelSuperseded(issuanceId, now));
+                .ifPresent(issuanceId -> emailDelivery.cancelSuperseded(issuanceId, now));
         oneTimeTokenRepository.invalidateActiveTokens(user.getId(), TokenPurpose.RESET_PASSWORD, now);
 
         GeneratedOpaqueToken generatedToken = tokenGenerator.generate();
@@ -133,7 +133,7 @@ public class PasswordResetService {
         ));
         UUID issuanceId = Objects.requireNonNull(token.getId(), "Persisted password-reset token must have an id");
 
-        emailOutboxService.enqueuePasswordReset(
+        emailDelivery.enqueuePasswordReset(
                 issuanceId,
                 user.getEmail(),
                 generatedToken.value(),
