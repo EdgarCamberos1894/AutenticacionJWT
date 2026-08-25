@@ -1,4 +1,4 @@
-package com.cambers.auth.security.refresh;
+package com.cambers.auth.authentication.internal.token;
 
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
 import com.cambers.auth.security.token.SecureOpaqueTokenGenerator;

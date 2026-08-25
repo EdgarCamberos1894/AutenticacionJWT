@@ -2,14 +2,16 @@ package com.cambers.auth.authentication.internal;
 
 import com.cambers.auth.account.AccountAuthentication;
 import com.cambers.auth.account.AuthenticatedAccount;
-import com.cambers.auth.authentication.internal.model.*;
+import com.cambers.auth.authentication.internal.model.AuthSession;
+import com.cambers.auth.authentication.internal.model.RefreshToken;
 import com.cambers.auth.authentication.internal.persistence.RefreshTokenRepository;
+import com.cambers.auth.authentication.internal.token.RefreshTokenGenerator;
 import com.cambers.auth.dto.TokenPairResponse;
 import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.exception.UnauthorizedException;
-import com.cambers.auth.security.refresh.RefreshTokenGenerator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Clock;
 import java.time.Instant;
 
