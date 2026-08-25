@@ -18,6 +18,6 @@ class ModularArchitectureTests {
     @Test
     void only_explicitly_annotated_packages_are_modules_during_migration() {
         assertThat(modules.stream().map(module -> module.getIdentifier().toString()))
-                .containsExactly("observability");
+                .containsExactlyInAnyOrder("observability", "delivery", "abuse");
     }
 }
