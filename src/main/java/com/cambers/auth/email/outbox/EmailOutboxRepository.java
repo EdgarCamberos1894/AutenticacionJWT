@@ -39,7 +39,10 @@ public interface EmailOutboxRepository extends JpaRepository<EmailOutboxMessage,
             update EmailOutboxMessage message
                set message.status = com.cambers.auth.email.outbox.EmailOutboxStatus.DEAD,
                    message.deliveryStatus = com.cambers.auth.email.outbox.EmailDeliveryStatus.FAILED,
+                   message.deliveryStatusAt = :now,
                    message.lastErrorCode = 'TOKEN_EXPIRED',
+                   message.nonce = null,
+                   message.ciphertext = null,
                    message.lockedAt = null,
                    message.lockedBy = null,
                    message.updatedAt = :now
