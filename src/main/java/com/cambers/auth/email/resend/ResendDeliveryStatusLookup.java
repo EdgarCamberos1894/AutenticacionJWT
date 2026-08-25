@@ -4,10 +4,15 @@ import com.cambers.auth.email.outbox.EmailDeliveryStatusLookup;
 import com.cambers.auth.email.outbox.EmailDeliveryStatusUpdate;
 import org.springframework.stereotype.Component;
 
+import java.util.Comparator;
 import java.util.Optional;
 
 @Component
 public class ResendDeliveryStatusLookup implements EmailDeliveryStatusLookup {
+
+    private static final Comparator<EmailDeliveryStatusUpdate> EFFECTIVE_STATUS_ORDER =
+            Comparator.comparingInt((EmailDeliveryStatusUpdate update) -> update.status().precedence())
+                    .thenComparing(EmailDeliveryStatusUpdate::occurredAt);
 
     private final ResendWebhookEventRepository eventRepository;
     private final ResendEmailEventMapper eventMapper;
@@ -21,7 +26,10 @@ public class ResendDeliveryStatusLookup implements EmailDeliveryStatusLookup {
 
     @Override
     public Optional<EmailDeliveryStatusUpdate> findLatest(String providerMessageId) {
-        return eventRepository.findTop20ByProviderMessageIdOrderByEventCreatedAtDesc(providerMessageId)
+        return eventRepository.findTop20ByProviderMessageIdAndEventTypeInOrderByEventCreatedAtDesc(
+                        providerMessageId,
+                        eventMapper.deliveryEventTypes()
+                )
                 .stream()
                 .flatMap(event -> eventMapper.deliveryStatus(event.getEventType())
                         .map(status -> new EmailDeliveryStatusUpdate(
@@ -29,6 +37,6 @@ public class ResendDeliveryStatusLookup implements EmailDeliveryStatusLookup {
                                 event.getEventCreatedAt()
                         ))
                         .stream())
-                .findFirst();
+                .max(EFFECTIVE_STATUS_ORDER);
     }
 }
