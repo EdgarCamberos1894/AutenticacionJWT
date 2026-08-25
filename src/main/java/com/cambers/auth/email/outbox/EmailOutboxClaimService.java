@@ -55,16 +55,27 @@ public class EmailOutboxClaimService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markAccepted(UUID messageId, String workerId, String providerMessageId) {
+    public boolean markAccepted(UUID messageId, String workerId, String providerMessageId) {
         EmailOutboxMessage message = repository.findById(messageId)
                 .orElseThrow(() -> new IllegalStateException("Email outbox message disappeared before completion"));
         if (!message.isOwnedBy(workerId)) {
             log.warn("Ignoring stale email outbox completion messageId={}", messageId);
+            return false;
+        }
+
+        message.markAccepted(providerMessageId, clock.instant());
+        return true;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void reconcileProviderDeliveryStatus(UUID messageId, String providerMessageId) {
+        EmailOutboxMessage message = repository.findById(messageId)
+                .orElseThrow(() -> new IllegalStateException("Email outbox message disappeared before webhook reconciliation"));
+        if (!providerMessageId.equals(message.getProviderMessageId())) {
             return;
         }
 
         Instant now = clock.instant();
-        message.markAccepted(providerMessageId, now);
         webhookEventRepository.findTopByProviderMessageIdOrderByEventCreatedAtDesc(providerMessageId)
                 .ifPresent(event -> eventMapper.deliveryStatus(event.getEventType())
                         .ifPresent(status -> message.applyDeliveryStatus(
