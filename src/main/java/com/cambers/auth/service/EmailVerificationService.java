@@ -99,6 +99,8 @@ public class EmailVerificationService {
         }
 
         Instant now = clock.instant();
+        oneTimeTokenRepository.findActiveTokenId(user.getId(), TokenPurpose.VERIFY_EMAIL)
+                .ifPresent(issuanceId -> emailOutboxService.cancelSuperseded(issuanceId, now));
         oneTimeTokenRepository.invalidateActiveTokens(user.getId(), TokenPurpose.VERIFY_EMAIL, now);
 
         GeneratedOpaqueToken generatedToken = tokenGenerator.generate();
