@@ -4,12 +4,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -24,9 +21,8 @@ public class AuthSession {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false, updatable = false)
+    private UUID userId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -54,12 +50,12 @@ public class AuthSession {
     }
 
     public AuthSession(
-            User user,
+            UUID userId,
             Instant createdAt,
             Instant expiresAt,
             String userAgent,
             String ipAddress) {
-        this.user = Objects.requireNonNull(user, "user must not be null");
+        this.userId = Objects.requireNonNull(userId, "userId must not be null");
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
         this.lastUsedAt = createdAt;
         this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt must not be null");
@@ -71,8 +67,8 @@ public class AuthSession {
         return id;
     }
 
-    public User getUser() {
-        return user;
+    public UUID getUserId() {
+        return userId;
     }
 
     public Instant getCreatedAt() {
