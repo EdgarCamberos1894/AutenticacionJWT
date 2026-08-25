@@ -1,9 +1,9 @@
 package com.cambers.auth.service;
 
+import com.cambers.auth.account.PasswordChangedEvent;
 import com.cambers.auth.config.properties.OneTimeTokenProperties;
 import com.cambers.auth.email.AuthenticationEmailDelivery;
 import com.cambers.auth.entity.OneTimeToken;
-import com.cambers.auth.entity.SessionRevocationReason;
 import com.cambers.auth.entity.TokenPurpose;
 import com.cambers.auth.entity.User;
 import com.cambers.auth.exception.BadRequestException;
@@ -17,6 +17,7 @@ import com.cambers.auth.repository.OneTimeTokenRepository;
 import com.cambers.auth.repository.UserRepository;
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
 import com.cambers.auth.security.token.SecureOpaqueTokenGenerator;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,10 +35,10 @@ public class PasswordResetService {
     private final SecureOpaqueTokenGenerator tokenGenerator;
     private final OneTimeTokenProperties properties;
     private final PasswordEncoder passwordEncoder;
-    private final SessionRevocationService sessionRevocationService;
     private final AuthenticationEmailDelivery emailDelivery;
     private final EmailNormalizer emailNormalizer;
     private final SecurityAuditPublisher auditPublisher;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     public PasswordResetService(
@@ -46,20 +47,20 @@ public class PasswordResetService {
             SecureOpaqueTokenGenerator tokenGenerator,
             OneTimeTokenProperties properties,
             PasswordEncoder passwordEncoder,
-            SessionRevocationService sessionRevocationService,
             AuthenticationEmailDelivery emailDelivery,
             EmailNormalizer emailNormalizer,
             SecurityAuditPublisher auditPublisher,
+            ApplicationEventPublisher eventPublisher,
             Clock clock) {
         this.oneTimeTokenRepository = oneTimeTokenRepository;
         this.userRepository = userRepository;
         this.tokenGenerator = tokenGenerator;
         this.properties = properties;
         this.passwordEncoder = passwordEncoder;
-        this.sessionRevocationService = sessionRevocationService;
         this.emailDelivery = emailDelivery;
         this.emailNormalizer = emailNormalizer;
         this.auditPublisher = auditPublisher;
+        this.eventPublisher = eventPublisher;
         this.clock = clock;
     }
 
@@ -106,7 +107,7 @@ public class PasswordResetService {
                 now
         );
         user.changePasswordHash(passwordEncoder.encode(newPassword), now);
-        sessionRevocationService.revokeAllForUser(userId, SessionRevocationReason.PASSWORD_RESET);
+        eventPublisher.publishEvent(new PasswordChangedEvent(userId));
         auditPublisher.afterCommit(SecurityAuditEvent.of(
                 SecurityAuditAction.PASSWORD_RESET_CONFIRM,
                 SecurityAuditOutcome.SUCCESS,
