@@ -29,17 +29,17 @@ public class SessionRevocationService {
     }
 
     @Transactional
-    public void revokeOwnedSession(UUID userId, UUID sessionId, SessionRevocationReason reason) {
-        AuthSession session = authSessionRepository.findByIdAndUserIdForUpdate(sessionId, userId)
+    public void revokeOwnedSession(UUID accountId, UUID sessionId, SessionRevocationReason reason) {
+        AuthSession session = authSessionRepository.findByIdAndAccountIdForUpdate(sessionId, accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found."));
         revokeSessionAndRefreshTokens(session, reason);
     }
 
     @Transactional
-    public void revokeAllForUser(UUID userId, SessionRevocationReason reason) {
+    public void revokeAllForAccount(UUID accountId, SessionRevocationReason reason) {
         Instant now = clock.instant();
-        refreshTokenRepository.revokeAllByUserId(userId, now);
-        authSessionRepository.revokeAllActiveByUserId(userId, now, reason);
+        refreshTokenRepository.revokeAllByAccountId(accountId, now);
+        authSessionRepository.revokeAllActiveByAccountId(accountId, now, reason);
     }
 
     @Transactional
