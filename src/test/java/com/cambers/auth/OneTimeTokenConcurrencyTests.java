@@ -2,12 +2,12 @@ package com.cambers.auth;
 
 import com.cambers.auth.account.AccountRegistration;
 import com.cambers.auth.account.EmailVerification;
+import com.cambers.auth.account.RegisterRequest;
 import com.cambers.auth.account.internal.model.OneTimeToken;
 import com.cambers.auth.account.internal.persistence.OneTimeTokenRepository;
 import com.cambers.auth.account.internal.persistence.UserRepository;
 import com.cambers.auth.authentication.internal.persistence.AuthSessionRepository;
 import com.cambers.auth.authentication.internal.persistence.RefreshTokenRepository;
-import com.cambers.auth.dto.RegisterRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
