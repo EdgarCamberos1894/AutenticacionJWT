@@ -22,54 +22,54 @@ class EmailOutboxWorkerTests {
 
     @Test
     void providerAcceptancePersistenceFailureDoesNotMarkDeliveryAsFailed() {
-        EmailOutboxClaimService claimService = mock(EmailOutboxClaimService.class);
+        EmailOutboxProcessingService processingService = mock(EmailOutboxProcessingService.class);
         EmailOutboxCrypto crypto = mock(EmailOutboxCrypto.class);
         TransactionalEmailSender sender = mock(TransactionalEmailSender.class);
-        EmailOutboxWorker worker = new EmailOutboxWorker(claimService, crypto, sender, properties());
+        EmailOutboxWorker worker = new EmailOutboxWorker(processingService, crypto, sender, properties());
         ClaimedEmailOutboxMessage message = claimedMessage();
         TransactionalEmail email = email(message.id());
 
-        when(claimService.claimNext(anyString()))
+        when(processingService.claimNext(anyString()))
                 .thenReturn(Optional.of(message))
                 .thenReturn(Optional.empty());
         when(crypto.decrypt(message)).thenReturn(email);
         when(sender.send(email)).thenReturn(new EmailDeliveryReceipt("provider-123"));
-        when(claimService.markAccepted(message.id(), anyString(), "provider-123"))
+        when(processingService.markAccepted(message.id(), anyString(), "provider-123"))
                 .thenThrow(new IllegalStateException("database unavailable"));
 
         worker.drain();
 
-        verify(claimService, never()).markFailure(
+        verify(processingService, never()).markFailure(
                 org.mockito.ArgumentMatchers.eq(message.id()),
                 anyString(),
                 org.mockito.ArgumentMatchers.anyBoolean(),
                 org.mockito.ArgumentMatchers.anyString()
         );
-        verify(claimService, never()).reconcileProviderDeliveryStatus(message.id(), "provider-123");
+        verify(processingService, never()).reconcileProviderDeliveryStatus(message.id(), "provider-123");
     }
 
     @Test
     void reconciliationFailureDoesNotTurnAcceptedDeliveryIntoFailure() {
-        EmailOutboxClaimService claimService = mock(EmailOutboxClaimService.class);
+        EmailOutboxProcessingService processingService = mock(EmailOutboxProcessingService.class);
         EmailOutboxCrypto crypto = mock(EmailOutboxCrypto.class);
         TransactionalEmailSender sender = mock(TransactionalEmailSender.class);
-        EmailOutboxWorker worker = new EmailOutboxWorker(claimService, crypto, sender, properties());
+        EmailOutboxWorker worker = new EmailOutboxWorker(processingService, crypto, sender, properties());
         ClaimedEmailOutboxMessage message = claimedMessage();
         TransactionalEmail email = email(message.id());
 
-        when(claimService.claimNext(anyString()))
+        when(processingService.claimNext(anyString()))
                 .thenReturn(Optional.of(message))
                 .thenReturn(Optional.empty());
         when(crypto.decrypt(message)).thenReturn(email);
         when(sender.send(email)).thenReturn(new EmailDeliveryReceipt("provider-123"));
-        when(claimService.markAccepted(message.id(), anyString(), "provider-123")).thenReturn(true);
+        when(processingService.markAccepted(message.id(), anyString(), "provider-123")).thenReturn(true);
         org.mockito.Mockito.doThrow(new IllegalStateException("temporary reconciliation failure"))
-                .when(claimService)
+                .when(processingService)
                 .reconcileProviderDeliveryStatus(message.id(), "provider-123");
 
         worker.drain();
 
-        verify(claimService, never()).markFailure(
+        verify(processingService, never()).markFailure(
                 org.mockito.ArgumentMatchers.eq(message.id()),
                 anyString(),
                 org.mockito.ArgumentMatchers.anyBoolean(),
