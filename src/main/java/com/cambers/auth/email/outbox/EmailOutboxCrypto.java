@@ -48,13 +48,38 @@ public class EmailOutboxCrypto {
         }
     }
 
+    public TransactionalEmail decrypt(ClaimedEmailOutboxMessage message) {
+        return decrypt(
+                message.id(),
+                message.purpose(),
+                message.keyId(),
+                message.nonce(),
+                message.ciphertext()
+        );
+    }
+
     public TransactionalEmail decrypt(EmailOutboxMessage message) {
-        String encodedKey = resolveKey(message.getKeyId());
+        return decrypt(
+                message.getId(),
+                message.getPurpose(),
+                message.getKeyId(),
+                message.getNonce(),
+                message.getCiphertext()
+        );
+    }
+
+    private TransactionalEmail decrypt(
+            UUID messageId,
+            EmailOutboxPurpose purpose,
+            String keyId,
+            byte[] nonce,
+            byte[] ciphertext) {
+        String encodedKey = resolveKey(keyId);
         try {
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, key(encodedKey), new GCMParameterSpec(GCM_TAG_BITS, message.getNonce()));
-            cipher.updateAAD(aad(message.getId(), message.getPurpose(), message.getKeyId()));
-            byte[] plaintext = cipher.doFinal(message.getCiphertext());
+            cipher.init(Cipher.DECRYPT_MODE, key(encodedKey), new GCMParameterSpec(GCM_TAG_BITS, nonce));
+            cipher.updateAAD(aad(messageId, purpose, keyId));
+            byte[] plaintext = cipher.doFinal(ciphertext);
             return jsonMapper.readValue(plaintext, TransactionalEmail.class);
         } catch (AEADBadTagException exception) {
             throw new IllegalStateException("Email outbox payload authentication failed", exception);
