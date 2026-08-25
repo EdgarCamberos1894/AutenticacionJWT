@@ -51,7 +51,17 @@ public class EmailOutboxWorker {
         try {
             TransactionalEmail email = crypto.decrypt(message);
             EmailDeliveryReceipt receipt = sender.send(email);
-            claimService.markAccepted(message.id(), workerId, receipt.providerMessageId());
+            boolean accepted = claimService.markAccepted(
+                    message.id(),
+                    workerId,
+                    receipt.providerMessageId()
+            );
+            if (accepted) {
+                claimService.reconcileProviderDeliveryStatus(
+                        message.id(),
+                        receipt.providerMessageId()
+                );
+            }
         } catch (EmailDeliveryException exception) {
             log.warn(
                     "Transactional email delivery failed messageId={} attempt={} retryable={} providerStatus={} providerCode={}",
