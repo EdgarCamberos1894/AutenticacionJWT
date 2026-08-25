@@ -14,6 +14,16 @@ public enum ProblemCode {
             "invalid-password-reset-token",
             "Invalid password reset token"
     ),
+    INVALID_WEBHOOK_SIGNATURE(
+            "INVALID_WEBHOOK_SIGNATURE",
+            "invalid-webhook-signature",
+            "Invalid webhook signature"
+    ),
+    INVALID_WEBHOOK_PAYLOAD(
+            "INVALID_WEBHOOK_PAYLOAD",
+            "invalid-webhook-payload",
+            "Invalid webhook payload"
+    ),
     EMAIL_ALREADY_REGISTERED("EMAIL_ALREADY_REGISTERED", "email-already-registered", "Email already registered"),
     AUTHENTICATION_REQUIRED("AUTHENTICATION_REQUIRED", "authentication-required", "Authentication required"),
     ACCESS_DENIED("ACCESS_DENIED", "access-denied", "Access denied"),
