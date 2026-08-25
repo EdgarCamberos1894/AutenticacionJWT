@@ -11,21 +11,39 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ModularArchitectureTests {
 
+    private static final String DETECTION_STRATEGY_PROPERTY = "spring.modulith.detection-strategy";
+    private static final String EXPLICITLY_ANNOTATED = "explicitly-annotated";
+
     @Test
     void declaredModulesRespectTheirBoundaries() {
-        ApplicationModules modules = ApplicationModules.of(AuthApplication.class);
+        String previousStrategy = System.getProperty(DETECTION_STRATEGY_PROPERTY);
 
-        modules.verify();
+        try {
+            System.setProperty(DETECTION_STRATEGY_PROPERTY, EXPLICITLY_ANNOTATED);
+            ApplicationModules modules = ApplicationModules.of(AuthApplication.class);
 
-        Set<String> identifiers = modules.stream()
-                .map(module -> module.getIdentifier().toString())
-                .collect(Collectors.toSet());
+            modules.verify();
 
-        assertThat(identifiers).containsExactlyInAnyOrder(
-                "account",
-                "delivery",
-                "observability",
-                "abuse"
-        );
+            Set<String> identifiers = modules.stream()
+                    .map(module -> module.getIdentifier().toString())
+                    .collect(Collectors.toSet());
+
+            assertThat(identifiers).containsExactlyInAnyOrder(
+                    "account",
+                    "delivery",
+                    "observability",
+                    "abuse"
+            );
+        } finally {
+            restoreDetectionStrategy(previousStrategy);
+        }
+    }
+
+    private void restoreDetectionStrategy(String previousStrategy) {
+        if (previousStrategy == null) {
+            System.clearProperty(DETECTION_STRATEGY_PROPERTY);
+            return;
+        }
+        System.setProperty(DETECTION_STRATEGY_PROPERTY, previousStrategy);
     }
 }
