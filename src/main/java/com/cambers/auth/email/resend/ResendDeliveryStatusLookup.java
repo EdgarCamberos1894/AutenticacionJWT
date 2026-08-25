@@ -21,11 +21,14 @@ public class ResendDeliveryStatusLookup implements EmailDeliveryStatusLookup {
 
     @Override
     public Optional<EmailDeliveryStatusUpdate> findLatest(String providerMessageId) {
-        return eventRepository.findTopByProviderMessageIdOrderByEventCreatedAtDesc(providerMessageId)
+        return eventRepository.findTop20ByProviderMessageIdOrderByEventCreatedAtDesc(providerMessageId)
+                .stream()
                 .flatMap(event -> eventMapper.deliveryStatus(event.getEventType())
                         .map(status -> new EmailDeliveryStatusUpdate(
                                 status,
                                 event.getEventCreatedAt()
-                        )));
+                        ))
+                        .stream())
+                .findFirst();
     }
 }
