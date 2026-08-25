@@ -20,7 +20,7 @@ class AccountPasswordChangedSessionRevocationListener {
 
     @EventListener
     void on(AccountPasswordChanged event) {
-        sessionRevocationService.revokeAllForUser(
+        sessionRevocationService.revokeAllForAccount(
                 event.accountId(),
                 SessionRevocationReason.PASSWORD_RESET
         );
