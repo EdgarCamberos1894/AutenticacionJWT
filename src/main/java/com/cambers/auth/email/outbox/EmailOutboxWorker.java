@@ -20,17 +20,17 @@ public class EmailOutboxWorker {
     private static final Logger log = LoggerFactory.getLogger(EmailOutboxWorker.class);
 
     private final String workerId = UUID.randomUUID().toString();
-    private final EmailOutboxClaimService claimService;
+    private final EmailOutboxProcessingService processingService;
     private final EmailOutboxCrypto crypto;
     private final TransactionalEmailSender sender;
     private final EmailOutboxProperties properties;
 
     public EmailOutboxWorker(
-            EmailOutboxClaimService claimService,
+            EmailOutboxProcessingService processingService,
             EmailOutboxCrypto crypto,
             TransactionalEmailSender sender,
             EmailOutboxProperties properties) {
-        this.claimService = claimService;
+        this.processingService = processingService;
         this.crypto = crypto;
         this.sender = sender;
         this.properties = properties;
@@ -39,7 +39,7 @@ public class EmailOutboxWorker {
     @Scheduled(fixedDelayString = "${auth.email.outbox.poll-interval:PT2S}")
     public void drain() {
         for (int index = 0; index < properties.batchSize(); index++) {
-            var claimed = claimService.claimNext(workerId);
+            var claimed = processingService.claimNext(workerId);
             if (claimed.isEmpty()) {
                 return;
             }
@@ -53,7 +53,7 @@ public class EmailOutboxWorker {
             email = crypto.decrypt(message);
         } catch (RuntimeException exception) {
             log.error("Could not decrypt transactional email outbox messageId={}", message.id(), exception);
-            claimService.markFailure(message.id(), workerId, true, "OUTBOX_DECRYPTION_ERROR");
+            processingService.markFailure(message.id(), workerId, true, "OUTBOX_DECRYPTION_ERROR");
             return;
         }
 
@@ -69,7 +69,7 @@ public class EmailOutboxWorker {
                     exception.getProviderStatus(),
                     exception.getProviderCode()
             );
-            claimService.markFailure(
+            processingService.markFailure(
                     message.id(),
                     workerId,
                     exception.isRetryable(),
@@ -80,13 +80,13 @@ public class EmailOutboxWorker {
             return;
         } catch (RuntimeException exception) {
             log.error("Unexpected transactional email provider failure messageId={}", message.id(), exception);
-            claimService.markFailure(message.id(), workerId, true, "EMAIL_PROVIDER_RUNTIME_ERROR");
+            processingService.markFailure(message.id(), workerId, true, "EMAIL_PROVIDER_RUNTIME_ERROR");
             return;
         }
 
         boolean accepted;
         try {
-            accepted = claimService.markAccepted(
+            accepted = processingService.markAccepted(
                     message.id(),
                     workerId,
                     receipt.providerMessageId()
@@ -108,7 +108,7 @@ public class EmailOutboxWorker {
         }
 
         try {
-            claimService.reconcileProviderDeliveryStatus(
+            processingService.reconcileProviderDeliveryStatus(
                     message.id(),
                     receipt.providerMessageId()
             );
