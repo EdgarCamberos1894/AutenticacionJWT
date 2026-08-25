@@ -88,7 +88,7 @@ public class AuthController {
     public ResponseEntity<Void> resendEmailVerification(
             @Valid @RequestBody EmailVerificationResendRequest request) {
         emailVerificationService.resend(request.email());
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.accepted().build();
     }
 
     @PostMapping(path = "/email-verification/confirm", consumes = "application/json")
@@ -101,7 +101,7 @@ public class AuthController {
     @PostMapping(path = "/password-reset", consumes = "application/json")
     public ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody PasswordResetRequest request) {
         passwordResetService.requestReset(request.email());
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.accepted().build();
     }
 
     @PostMapping(path = "/password-reset/confirm", consumes = "application/json")
