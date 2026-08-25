@@ -19,7 +19,6 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
             select token
             from RefreshToken token
             join fetch token.session session
-            join fetch session.user user
             where token.tokenHash = :tokenHash
             """)
     Optional<RefreshToken> findByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
@@ -43,7 +42,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
             where token.session.id in (
                 select session.id
                 from AuthSession session
-                where session.user.id = :userId
+                where session.userId = :userId
             )
               and token.revokedAt is null
             """)
