@@ -148,13 +148,13 @@ class RegistrationFlowTests {
         mockMvc.perform(post("/api/v1/auth/email-verification")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(emailBody(EMAIL)))
-                .andExpect(status().isNoContent())
+                .andExpect(status().isAccepted())
                 .andExpect(content().string(""));
 
         mockMvc.perform(post("/api/v1/auth/email-verification")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(emailBody("unknown@example.com")))
-                .andExpect(status().isNoContent())
+                .andExpect(status().isAccepted())
                 .andExpect(content().string(""));
 
         assertThat(oneTimeTokenRepository.findById(original.getId()).orElseThrow().isInvalidated()).isTrue();
