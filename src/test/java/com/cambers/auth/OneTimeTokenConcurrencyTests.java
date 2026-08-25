@@ -2,12 +2,12 @@ package com.cambers.auth;
 
 import com.cambers.auth.account.AccountRegistration;
 import com.cambers.auth.account.EmailVerification;
+import com.cambers.auth.account.internal.model.OneTimeToken;
+import com.cambers.auth.account.internal.persistence.OneTimeTokenRepository;
+import com.cambers.auth.account.internal.persistence.UserRepository;
+import com.cambers.auth.authentication.internal.persistence.AuthSessionRepository;
+import com.cambers.auth.authentication.internal.persistence.RefreshTokenRepository;
 import com.cambers.auth.dto.RegisterRequest;
-import com.cambers.auth.entity.OneTimeToken;
-import com.cambers.auth.repository.AuthSessionRepository;
-import com.cambers.auth.repository.OneTimeTokenRepository;
-import com.cambers.auth.repository.RefreshTokenRepository;
-import com.cambers.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,23 +37,12 @@ class OneTimeTokenConcurrencyTests {
     @ServiceConnection
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
 
-    @Autowired
-    private AccountRegistration accountRegistration;
-
-    @Autowired
-    private EmailVerification emailVerification;
-
-    @Autowired
-    private OneTimeTokenRepository oneTimeTokenRepository;
-
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
-
-    @Autowired
-    private AuthSessionRepository authSessionRepository;
-
-    @Autowired
-    private UserRepository userRepository;
+    @Autowired private AccountRegistration accountRegistration;
+    @Autowired private EmailVerification emailVerification;
+    @Autowired private OneTimeTokenRepository oneTimeTokenRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
+    @Autowired private AuthSessionRepository authSessionRepository;
+    @Autowired private UserRepository userRepository;
 
     @BeforeEach
     void cleanDatabase() {
@@ -83,10 +72,8 @@ class OneTimeTokenConcurrencyTests {
 
         List<OneTimeToken> tokens = oneTimeTokenRepository.findAll();
         assertThat(tokens).hasSize(3);
-        assertThat(tokens.stream().filter(token -> !token.isConsumed() && !token.isInvalidated()))
-                .hasSize(1);
-        assertThat(tokens.stream().filter(OneTimeToken::isInvalidated))
-                .hasSize(2);
+        assertThat(tokens.stream().filter(token -> !token.isConsumed() && !token.isInvalidated())).hasSize(1);
+        assertThat(tokens.stream().filter(OneTimeToken::isInvalidated)).hasSize(2);
     }
 
     private void resendWhenReleased(CountDownLatch ready, CountDownLatch start) {
