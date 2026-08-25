@@ -84,7 +84,7 @@ class EmailOutboxIntegrationTests {
                         .content("""
                                 {"email":"%s"}
                                 """.formatted(EMAIL)))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isAccepted());
 
         EmailOutboxMessage originalMessage = outboxRepository.findById(originalToken.getId()).orElseThrow();
         assertThat(originalMessage.getStatus()).isEqualTo(EmailOutboxStatus.CANCELLED);
