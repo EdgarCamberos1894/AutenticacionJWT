@@ -1,5 +1,6 @@
-package com.cambers.auth.ratelimit;
+package com.cambers.auth.abuse.internal;
 
+import com.cambers.auth.abuse.RateLimitBackendUnavailableException;
 import com.cambers.auth.config.properties.RateLimitProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -14,17 +15,10 @@ import java.util.UUID;
 
 @Component
 @ConditionalOnProperty(prefix = "security.rate-limit", name = "enabled", havingValue = "true", matchIfMissing = true)
-public class RedisRequestRateLimiter implements RequestRateLimiter {
+class RedisRequestRateLimiter implements RequestRateLimiter {
 
-    // v2 intentionally separates sorted-set sliding-window keys from the previous string-counter format.
     private static final String KEY_PREFIX = "auth:rate-limit:v2:";
 
-    /**
-     * Sliding-window limiter executed atomically by Redis.
-     *
-     * A positive result means the request is allowed. A negative result encodes
-     * the number of milliseconds until the oldest counted request leaves the window.
-     */
     private static final DefaultRedisScript<Long> CONSUME_SCRIPT = new DefaultRedisScript<>("""
             local limit = tonumber(ARGV[1])
             local window = tonumber(ARGV[2])
@@ -54,7 +48,7 @@ public class RedisRequestRateLimiter implements RequestRateLimiter {
 
     private final StringRedisTemplate redisTemplate;
 
-    public RedisRequestRateLimiter(StringRedisTemplate redisTemplate) {
+    RedisRequestRateLimiter(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 

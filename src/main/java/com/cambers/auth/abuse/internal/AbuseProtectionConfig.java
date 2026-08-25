@@ -1,11 +1,8 @@
-package com.cambers.auth.config;
+package com.cambers.auth.abuse.internal;
 
+import com.cambers.auth.abuse.ClientIpResolver;
 import com.cambers.auth.config.properties.RateLimitProperties;
 import com.cambers.auth.observability.SecurityAuditPublisher;
-import com.cambers.auth.ratelimit.ClientIpResolver;
-import com.cambers.auth.ratelimit.RateLimitInterceptor;
-import com.cambers.auth.ratelimit.RateLimitPolicyResolver;
-import com.cambers.auth.ratelimit.RequestRateLimiter;
 import com.cambers.auth.security.SecurityProblemWriter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -13,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration(proxyBeanMethods = false)
-public class RateLimitConfig {
+class AbuseProtectionConfig {
 
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnProperty(

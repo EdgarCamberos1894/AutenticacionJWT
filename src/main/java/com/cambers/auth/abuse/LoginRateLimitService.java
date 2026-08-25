@@ -1,5 +1,7 @@
-package com.cambers.auth.ratelimit;
+package com.cambers.auth.abuse;
 
+import com.cambers.auth.abuse.internal.RateLimitDecision;
+import com.cambers.auth.abuse.internal.RequestRateLimiter;
 import com.cambers.auth.config.properties.RateLimitProperties;
 import org.springframework.stereotype.Service;
 

@@ -1,4 +1,4 @@
-package com.cambers.auth.ratelimit;
+package com.cambers.auth.abuse.internal;
 
 public record RateLimitDecision(boolean allowed, long retryAfterSeconds) {
 

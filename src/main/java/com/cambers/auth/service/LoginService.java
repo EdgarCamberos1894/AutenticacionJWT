@@ -1,5 +1,6 @@
 package com.cambers.auth.service;
 
+import com.cambers.auth.abuse.LoginRateLimitService;
 import com.cambers.auth.config.properties.SessionProperties;
 import com.cambers.auth.dto.LoginRequest;
 import com.cambers.auth.dto.TokenPairResponse;
@@ -12,7 +13,6 @@ import com.cambers.auth.observability.SecurityAuditEvent;
 import com.cambers.auth.observability.SecurityAuditOutcome;
 import com.cambers.auth.observability.SecurityAuditPublisher;
 import com.cambers.auth.observability.SecurityAuditReason;
-import com.cambers.auth.ratelimit.LoginRateLimitService;
 import com.cambers.auth.repository.AuthSessionRepository;
 import com.cambers.auth.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;

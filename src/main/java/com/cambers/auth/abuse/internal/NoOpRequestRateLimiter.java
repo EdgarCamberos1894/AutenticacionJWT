@@ -1,4 +1,4 @@
-package com.cambers.auth.ratelimit;
+package com.cambers.auth.abuse.internal;
 
 import com.cambers.auth.config.properties.RateLimitProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @ConditionalOnProperty(prefix = "security.rate-limit", name = "enabled", havingValue = "false")
-public class NoOpRequestRateLimiter implements RequestRateLimiter {
+class NoOpRequestRateLimiter implements RequestRateLimiter {
 
     @Override
     public RateLimitDecision consume(

@@ -1,18 +1,18 @@
-package com.cambers.auth.ratelimit;
+package com.cambers.auth.abuse.internal;
 
 import com.cambers.auth.config.properties.RateLimitProperties;
 
 import java.util.Optional;
 
-public class RateLimitPolicyResolver {
+class RateLimitPolicyResolver {
 
     private final RateLimitProperties properties;
 
-    public RateLimitPolicyResolver(RateLimitProperties properties) {
+    RateLimitPolicyResolver(RateLimitProperties properties) {
         this.properties = properties;
     }
 
-    public Optional<NamedPolicy> resolve(String requestPath) {
+    Optional<NamedPolicy> resolve(String requestPath) {
         return switch (requestPath) {
             case "/api/v1/auth/register" -> named("register", properties.register());
             case "/api/v1/auth/login" -> named("login", properties.login());
@@ -31,6 +31,6 @@ public class RateLimitPolicyResolver {
         return Optional.of(new NamedPolicy(name, policy));
     }
 
-    public record NamedPolicy(String name, RateLimitProperties.Policy policy) {
+    record NamedPolicy(String name, RateLimitProperties.Policy policy) {
     }
 }

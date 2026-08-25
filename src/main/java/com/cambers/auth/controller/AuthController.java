@@ -1,5 +1,6 @@
 package com.cambers.auth.controller;
 
+import com.cambers.auth.abuse.ClientIpResolver;
 import com.cambers.auth.dto.AuthSessionResponse;
 import com.cambers.auth.dto.EmailVerificationRequest;
 import com.cambers.auth.dto.EmailVerificationResendRequest;
@@ -10,7 +11,6 @@ import com.cambers.auth.dto.RefreshTokenRequest;
 import com.cambers.auth.dto.RegisterRequest;
 import com.cambers.auth.dto.RegistrationResponse;
 import com.cambers.auth.dto.TokenPairResponse;
-import com.cambers.auth.ratelimit.ClientIpResolver;
 import com.cambers.auth.service.AuthenticationFacade;
 import com.cambers.auth.service.EmailVerificationService;
 import com.cambers.auth.service.PasswordResetService;

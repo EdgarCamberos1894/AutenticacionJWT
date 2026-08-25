@@ -32,7 +32,7 @@ class LayeredArchitectureTests {
                     "..service..",
                     "..repository..",
                     "..security..",
-                    "..ratelimit..",
+                    "..abuse..",
                     "..email.."
             );
 

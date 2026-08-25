@@ -1,4 +1,4 @@
-package com.cambers.auth.ratelimit;
+package com.cambers.auth.abuse.internal;
 
 import com.cambers.auth.config.properties.RateLimitProperties;
 

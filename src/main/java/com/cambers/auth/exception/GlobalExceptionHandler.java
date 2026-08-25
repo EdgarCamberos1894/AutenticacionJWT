@@ -1,7 +1,7 @@
 package com.cambers.auth.exception;
 
-import com.cambers.auth.ratelimit.RateLimitBackendUnavailableException;
-import com.cambers.auth.ratelimit.RateLimitExceededException;
+import com.cambers.auth.abuse.RateLimitBackendUnavailableException;
+import com.cambers.auth.abuse.RateLimitExceededException;
 import com.cambers.auth.validation.ValidationError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

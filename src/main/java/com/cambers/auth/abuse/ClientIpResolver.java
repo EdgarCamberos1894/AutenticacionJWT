@@ -1,4 +1,4 @@
-package com.cambers.auth.ratelimit;
+package com.cambers.auth.abuse;
 
 import com.cambers.auth.config.properties.ClientIpProperties;
 import jakarta.servlet.http.HttpServletRequest;

@@ -19,5 +19,7 @@ class ModularArchitectureTests {
         modules.verify();
 
         assertThat(modules.getModuleByName("observability")).isPresent();
+        var abuse = modules.getModuleByName("abuse").orElseThrow();
+        assertThat(abuse.getDirectDependencies(modules).containsModuleNamed("observability")).isTrue();
     }
 }
