@@ -1,5 +1,6 @@
 package com.cambers.auth;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -54,9 +55,13 @@ class RateLimitIntegrationTests {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private MeterRegistry meterRegistry;
+
     @Test
     void clientLoginLimitIsSharedInRedisAndReturnsStandardsBased429() throws Exception {
         String request = loginBody("client-limit@example.com");
+        double before = rateLimitDeniedCount();
 
         for (int attempt = 0; attempt < 2; attempt++) {
             mockMvc.perform(post("/api/v1/auth/login")
@@ -77,6 +82,7 @@ class RateLimitIntegrationTests {
 
         long retryAfter = Long.parseLong(result.getResponse().getHeader(HttpHeaders.RETRY_AFTER));
         assertThat(retryAfter).isPositive().isLessThanOrEqualTo(300);
+        assertThat(rateLimitDeniedCount()).isEqualTo(before + 1.0);
     }
 
     @Test
@@ -112,6 +118,17 @@ class RateLimitIntegrationTests {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"))
                 .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
+    }
+
+    private double rateLimitDeniedCount() {
+        var counter = meterRegistry.find("auth.security.events")
+                .tags(
+                        "action", "rate_limit",
+                        "outcome", "denied",
+                        "reason", "rate_limit_exceeded"
+                )
+                .counter();
+        return counter == null ? 0.0 : counter.count();
     }
 
     private String loginBody(String email) {
