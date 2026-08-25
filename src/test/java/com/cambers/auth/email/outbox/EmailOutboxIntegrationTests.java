@@ -54,10 +54,7 @@ class EmailOutboxIntegrationTests {
 
     @Test
     void registrationCommitsOneTimeTokenAndEncryptedOutboxAtomically() throws Exception {
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(registerBody()))
-                .andExpect(status().isCreated());
+        register();
 
         var token = oneTimeTokenRepository.findAll().getFirst();
         EmailOutboxMessage message = outboxRepository.findById(token.getId()).orElseThrow();
@@ -78,11 +75,32 @@ class EmailOutboxIntegrationTests {
     }
 
     @Test
-    void rejectedDuplicateRegistrationDoesNotCreateAnotherOutboxMessage() throws Exception {
-        mockMvc.perform(post("/api/v1/auth/register")
+    void resendCancelsAndScrubsSupersededVerificationEmail() throws Exception {
+        register();
+        var originalToken = oneTimeTokenRepository.findAll().getFirst();
+
+        mockMvc.perform(post("/api/v1/auth/email-verification")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(registerBody()))
-                .andExpect(status().isCreated());
+                        .content("""
+                                {"email":"%s"}
+                                """.formatted(EMAIL)))
+                .andExpect(status().isNoContent());
+
+        EmailOutboxMessage originalMessage = outboxRepository.findById(originalToken.getId()).orElseThrow();
+        assertThat(originalMessage.getStatus()).isEqualTo(EmailOutboxStatus.CANCELLED);
+        assertThat(originalMessage.getDeliveryStatus()).isEqualTo(EmailDeliveryStatus.CANCELLED);
+        assertThat(originalMessage.getNonce()).isNull();
+        assertThat(originalMessage.getCiphertext()).isNull();
+
+        assertThat(outboxRepository.findAll())
+                .filteredOn(message -> message.getStatus() == EmailOutboxStatus.PENDING)
+                .singleElement()
+                .satisfies(message -> assertThat(message.getId()).isNotEqualTo(originalToken.getId()));
+    }
+
+    @Test
+    void rejectedDuplicateRegistrationDoesNotCreateAnotherOutboxMessage() throws Exception {
+        register();
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -91,6 +109,13 @@ class EmailOutboxIntegrationTests {
 
         assertThat(oneTimeTokenRepository.count()).isEqualTo(1);
         assertThat(outboxRepository.count()).isEqualTo(1);
+    }
+
+    private void register() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registerBody()))
+                .andExpect(status().isCreated());
     }
 
     private String registerBody() {
