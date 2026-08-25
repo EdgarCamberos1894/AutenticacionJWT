@@ -38,6 +38,7 @@ public class OneTimeToken {
     public UUID getId() { return id; }
     public User getUser() { return user; }
     public TokenPurpose getPurpose() { return purpose; }
+    public String getTokenHash() { return tokenHash; }
     public boolean isConsumed() { return consumedAt != null; }
     public boolean isInvalidated() { return invalidatedAt != null; }
     public boolean isExpired(Instant now) { return !expiresAt.isAfter(now); }

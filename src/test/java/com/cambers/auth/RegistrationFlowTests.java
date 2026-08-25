@@ -1,13 +1,13 @@
 package com.cambers.auth;
 
-import com.cambers.auth.entity.AccountStatus;
-import com.cambers.auth.entity.OneTimeToken;
-import com.cambers.auth.entity.TokenPurpose;
-import com.cambers.auth.entity.User;
-import com.cambers.auth.repository.AuthSessionRepository;
-import com.cambers.auth.repository.OneTimeTokenRepository;
-import com.cambers.auth.repository.RefreshTokenRepository;
-import com.cambers.auth.repository.UserRepository;
+import com.cambers.auth.account.internal.model.AccountStatus;
+import com.cambers.auth.account.internal.model.OneTimeToken;
+import com.cambers.auth.account.internal.model.TokenPurpose;
+import com.cambers.auth.account.internal.model.User;
+import com.cambers.auth.account.internal.persistence.OneTimeTokenRepository;
+import com.cambers.auth.account.internal.persistence.UserRepository;
+import com.cambers.auth.authentication.internal.persistence.AuthSessionRepository;
+import com.cambers.auth.authentication.internal.persistence.RefreshTokenRepository;
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
 import com.cambers.auth.security.token.SecureOpaqueTokenGenerator;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,23 +44,12 @@ class RegistrationFlowTests {
     @ServiceConnection
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private AuthSessionRepository authSessionRepository;
-
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
-
-    @Autowired
-    private OneTimeTokenRepository oneTimeTokenRepository;
-
-    @Autowired
-    private SecureOpaqueTokenGenerator opaqueTokenGenerator;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private UserRepository userRepository;
+    @Autowired private AuthSessionRepository authSessionRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
+    @Autowired private OneTimeTokenRepository oneTimeTokenRepository;
+    @Autowired private SecureOpaqueTokenGenerator opaqueTokenGenerator;
 
     @BeforeEach
     void cleanDatabase() {

@@ -35,6 +35,7 @@ public class RefreshToken {
     }
     public UUID getId() { return id; }
     public AuthSession getSession() { return session; }
+    public String getTokenHash() { return tokenHash; }
     public boolean isUsed() { return usedAt != null; }
     public boolean isRevoked() { return revokedAt != null; }
     public boolean isExpired(Instant now) { return !expiresAt.isAfter(now); }
