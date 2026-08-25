@@ -30,6 +30,10 @@ public interface EmailOutboxRepository extends JpaRepository<EmailOutboxMessage,
             @Param("leaseExpiredBefore") Instant leaseExpiredBefore);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select message from EmailOutboxMessage message where message.id = :messageId")
+    Optional<EmailOutboxMessage> findByIdForUpdate(@Param("messageId") UUID messageId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select message from EmailOutboxMessage message where message.providerMessageId = :providerMessageId")
     Optional<EmailOutboxMessage> findByProviderMessageIdForUpdate(
             @Param("providerMessageId") String providerMessageId);
