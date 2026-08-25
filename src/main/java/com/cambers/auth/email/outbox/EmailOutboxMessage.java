@@ -24,10 +24,8 @@ public class EmailOutboxMessage {
     @Column(name = "key_id", nullable = false, length = 64)
     private String keyId;
 
-    @Column(nullable = false)
     private byte[] nonce;
 
-    @Column(nullable = false)
     private byte[] ciphertext;
 
     @Enumerated(EnumType.STRING)
@@ -95,6 +93,9 @@ public class EmailOutboxMessage {
     }
 
     public void claim(String workerId, Instant now) {
+        if (nonce == null || ciphertext == null) {
+            throw new IllegalStateException("A scrubbed outbox message cannot be claimed");
+        }
         this.status = EmailOutboxStatus.PROCESSING;
         this.lockedBy = workerId;
         this.lockedAt = now;
@@ -113,6 +114,7 @@ public class EmailOutboxMessage {
         this.lastErrorCode = null;
         applyDeliveryStatus(EmailDeliveryStatus.ACCEPTED, now, now);
         clearLease();
+        scrubPayload();
         this.updatedAt = now;
     }
 
@@ -129,6 +131,7 @@ public class EmailOutboxMessage {
         this.lastErrorCode = errorCode;
         applyDeliveryStatus(EmailDeliveryStatus.FAILED, now, now);
         clearLease();
+        scrubPayload();
         this.updatedAt = now;
     }
 
@@ -148,11 +151,16 @@ public class EmailOutboxMessage {
         this.lockedBy = null;
     }
 
+    private void scrubPayload() {
+        this.nonce = null;
+        this.ciphertext = null;
+    }
+
     public UUID getId() { return id; }
     public EmailOutboxPurpose getPurpose() { return purpose; }
     public String getKeyId() { return keyId; }
-    public byte[] getNonce() { return nonce.clone(); }
-    public byte[] getCiphertext() { return ciphertext.clone(); }
+    public byte[] getNonce() { return nonce == null ? null : nonce.clone(); }
+    public byte[] getCiphertext() { return ciphertext == null ? null : ciphertext.clone(); }
     public EmailOutboxStatus getStatus() { return status; }
     public EmailDeliveryStatus getDeliveryStatus() { return deliveryStatus; }
     public Instant getDeliveryStatusAt() { return deliveryStatusAt; }
