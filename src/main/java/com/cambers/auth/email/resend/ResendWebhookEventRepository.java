@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
-import java.util.Optional;
+import java.util.List;
 
 public interface ResendWebhookEventRepository extends JpaRepository<ResendWebhookEvent, String> {
 
@@ -34,5 +34,5 @@ public interface ResendWebhookEventRepository extends JpaRepository<ResendWebhoo
             @Param("eventCreatedAt") Instant eventCreatedAt,
             @Param("receivedAt") Instant receivedAt);
 
-    Optional<ResendWebhookEvent> findTopByProviderMessageIdOrderByEventCreatedAtDesc(String providerMessageId);
+    List<ResendWebhookEvent> findTop20ByProviderMessageIdOrderByEventCreatedAtDesc(String providerMessageId);
 }
