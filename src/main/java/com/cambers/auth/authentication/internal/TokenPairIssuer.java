@@ -4,15 +4,16 @@ import com.cambers.auth.account.AuthenticatedAccount;
 import com.cambers.auth.authentication.internal.model.AuthSession;
 import com.cambers.auth.authentication.internal.model.RefreshToken;
 import com.cambers.auth.authentication.internal.persistence.RefreshTokenRepository;
+import com.cambers.auth.authentication.internal.token.IssuedAccessToken;
+import com.cambers.auth.authentication.internal.token.JwtTokenService;
 import com.cambers.auth.config.properties.SessionProperties;
 import com.cambers.auth.dto.TokenPairResponse;
-import com.cambers.auth.security.jwt.IssuedAccessToken;
-import com.cambers.auth.security.jwt.JwtTokenService;
 import com.cambers.auth.security.refresh.GeneratedRefreshToken;
 import com.cambers.auth.security.refresh.RefreshTokenGenerator;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Clock;
 import java.time.Instant;
 

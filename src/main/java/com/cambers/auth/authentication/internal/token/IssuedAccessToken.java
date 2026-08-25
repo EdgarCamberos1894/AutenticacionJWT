@@ -1,4 +1,4 @@
-package com.cambers.auth.security.jwt;
+package com.cambers.auth.authentication.internal.token;
 
 import java.time.Instant;
 
