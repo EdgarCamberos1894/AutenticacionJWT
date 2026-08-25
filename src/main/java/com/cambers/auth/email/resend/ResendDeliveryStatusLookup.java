@@ -25,7 +25,7 @@ public class ResendDeliveryStatusLookup implements EmailDeliveryStatusLookup {
     }
 
     @Override
-    public Optional<EmailDeliveryStatusUpdate> findLatest(String providerMessageId) {
+    public Optional<EmailDeliveryStatusUpdate> findEffectiveStatus(String providerMessageId) {
         return eventRepository.findTop20ByProviderMessageIdAndEventTypeInOrderByEventCreatedAtDesc(
                         providerMessageId,
                         eventMapper.deliveryEventTypes()
