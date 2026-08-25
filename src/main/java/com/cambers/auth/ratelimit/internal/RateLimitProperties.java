@@ -17,8 +17,10 @@ public record RateLimitProperties(
         @NotNull @Valid Policy loginAccount,
         @NotNull @Valid Policy refresh,
         @NotNull @Valid Policy emailVerification,
+        @NotNull @Valid Policy emailVerificationAccount,
         @NotNull @Valid Policy emailVerificationConfirm,
         @NotNull @Valid Policy passwordReset,
+        @NotNull @Valid Policy passwordResetAccount,
         @NotNull @Valid Policy passwordResetConfirm
 ) {
     public record Policy(@Min(1) int limit, @NotNull Duration window) {

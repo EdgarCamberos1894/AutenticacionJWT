@@ -31,6 +31,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "security.rate-limit.login.window=PT5M",
         "security.rate-limit.login-account.limit=2",
         "security.rate-limit.login-account.window=PT5M",
+        "security.rate-limit.email-verification-account.limit=2",
+        "security.rate-limit.email-verification-account.window=PT5M",
+        "security.rate-limit.password-reset-account.limit=2",
+        "security.rate-limit.password-reset-account.window=PT5M",
         "management.health.redis.enabled=true"
 })
 @AutoConfigureMockMvc
@@ -89,35 +93,58 @@ class RateLimitIntegrationTests {
     void accountLoginLimitCannotBeBypassedByChangingClientIp() throws Exception {
         String request = loginBody("account-limit@example.com");
 
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .with(mockRequest -> {
-                            mockRequest.setRemoteAddr("198.51.100.11");
-                            return mockRequest;
-                        })
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(request))
+        performFromAddress("/api/v1/auth/login", "198.51.100.11", request)
                 .andExpect(status().isUnauthorized());
-
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .with(mockRequest -> {
-                            mockRequest.setRemoteAddr("198.51.100.12");
-                            return mockRequest;
-                        })
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(request))
+        performFromAddress("/api/v1/auth/login", "198.51.100.12", request)
                 .andExpect(status().isUnauthorized());
-
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .with(mockRequest -> {
-                            mockRequest.setRemoteAddr("198.51.100.13");
-                            return mockRequest;
-                        })
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(request))
+        performFromAddress("/api/v1/auth/login", "198.51.100.13", request)
                 .andExpect(status().isTooManyRequests())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"))
                 .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
+    }
+
+    @Test
+    void passwordResetAccountLimitCannotBeBypassedByChangingClientIp() throws Exception {
+        String request = emailBody("reset-account-limit@example.com");
+
+        performFromAddress("/api/v1/auth/password-reset", "198.51.100.21", request)
+                .andExpect(status().isAccepted());
+        performFromAddress("/api/v1/auth/password-reset", "198.51.100.22", request)
+                .andExpect(status().isAccepted());
+        performFromAddress("/api/v1/auth/password-reset", "198.51.100.23", request)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"))
+                .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
+    }
+
+    @Test
+    void verificationResendAccountLimitCannotBeBypassedByChangingClientIp() throws Exception {
+        String request = emailBody("verification-account-limit@example.com");
+
+        performFromAddress("/api/v1/auth/email-verification", "198.51.100.31", request)
+                .andExpect(status().isAccepted());
+        performFromAddress("/api/v1/auth/email-verification", "198.51.100.32", request)
+                .andExpect(status().isAccepted());
+        performFromAddress("/api/v1/auth/email-verification", "198.51.100.33", request)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"))
+                .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions performFromAddress(
+            String path,
+            String remoteAddress,
+            String body) throws Exception {
+        return mockMvc.perform(post(path)
+                .with(request -> {
+                    request.setRemoteAddr(remoteAddress);
+                    return request;
+                })
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body));
     }
 
     private double rateLimitDeniedCount() {
@@ -134,6 +161,12 @@ class RateLimitIntegrationTests {
     private String loginBody(String email) {
         return """
                 {"email":"%s","password":"correct horse battery staple"}
+                """.formatted(email);
+    }
+
+    private String emailBody(String email) {
+        return """
+                {"email":"%s"}
                 """.formatted(email);
     }
 }

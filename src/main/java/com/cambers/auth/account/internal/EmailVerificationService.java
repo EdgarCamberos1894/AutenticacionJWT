@@ -11,6 +11,7 @@ import com.cambers.auth.email.AuthenticationEmailDelivery;
 import com.cambers.auth.exception.BadRequestException;
 import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.observability.*;
+import com.cambers.auth.ratelimit.RecoveryRateLimitService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
@@ -26,12 +27,14 @@ public class EmailVerificationService implements EmailVerification {
     private final OneTimeTokenProperties properties;
     private final AuthenticationEmailDelivery emailDelivery;
     private final EmailNormalizer emailNormalizer;
+    private final RecoveryRateLimitService recoveryRateLimitService;
     private final SecurityAuditPublisher auditPublisher;
     private final Clock clock;
 
     public EmailVerificationService(OneTimeTokenRepository oneTimeTokenRepository, UserRepository userRepository,
             SecureOpaqueTokenGenerator tokenGenerator, OneTimeTokenProperties properties,
             AuthenticationEmailDelivery emailDelivery, EmailNormalizer emailNormalizer,
+            RecoveryRateLimitService recoveryRateLimitService,
             SecurityAuditPublisher auditPublisher, Clock clock) {
         this.oneTimeTokenRepository = oneTimeTokenRepository;
         this.userRepository = userRepository;
@@ -39,6 +42,7 @@ public class EmailVerificationService implements EmailVerification {
         this.properties = properties;
         this.emailDelivery = emailDelivery;
         this.emailNormalizer = emailNormalizer;
+        this.recoveryRateLimitService = recoveryRateLimitService;
         this.auditPublisher = auditPublisher;
         this.clock = clock;
     }
@@ -53,6 +57,7 @@ public class EmailVerificationService implements EmailVerification {
     @Override @Transactional
     public void resend(String email) {
         String normalizedEmail = emailNormalizer.normalize(email);
+        recoveryRateLimitService.checkEmailVerification(normalizedEmail);
         userRepository.findByEmailIgnoreCaseForUpdate(normalizedEmail)
                 .filter(user -> !user.isEmailVerified())
                 .filter(user -> user.getStatus() == AccountStatus.PENDING_VERIFICATION)

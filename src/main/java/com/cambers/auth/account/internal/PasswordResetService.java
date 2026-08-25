@@ -10,6 +10,7 @@ import com.cambers.auth.email.AuthenticationEmailDelivery;
 import com.cambers.auth.exception.BadRequestException;
 import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.observability.*;
+import com.cambers.auth.ratelimit.RecoveryRateLimitService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class PasswordResetService implements PasswordRecovery {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationEmailDelivery emailDelivery;
     private final EmailNormalizer emailNormalizer;
+    private final RecoveryRateLimitService recoveryRateLimitService;
     private final SecurityAuditPublisher auditPublisher;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
@@ -35,6 +37,7 @@ public class PasswordResetService implements PasswordRecovery {
     public PasswordResetService(OneTimeTokenRepository oneTimeTokenRepository, UserRepository userRepository,
             SecureOpaqueTokenGenerator tokenGenerator, OneTimeTokenProperties properties, PasswordEncoder passwordEncoder,
             AuthenticationEmailDelivery emailDelivery, EmailNormalizer emailNormalizer,
+            RecoveryRateLimitService recoveryRateLimitService,
             SecurityAuditPublisher auditPublisher, ApplicationEventPublisher eventPublisher, Clock clock) {
         this.oneTimeTokenRepository = oneTimeTokenRepository;
         this.userRepository = userRepository;
@@ -43,6 +46,7 @@ public class PasswordResetService implements PasswordRecovery {
         this.passwordEncoder = passwordEncoder;
         this.emailDelivery = emailDelivery;
         this.emailNormalizer = emailNormalizer;
+        this.recoveryRateLimitService = recoveryRateLimitService;
         this.auditPublisher = auditPublisher;
         this.eventPublisher = eventPublisher;
         this.clock = clock;
@@ -50,7 +54,9 @@ public class PasswordResetService implements PasswordRecovery {
 
     @Override @Transactional
     public void requestReset(String email) {
-        userRepository.findByEmailIgnoreCaseForUpdate(emailNormalizer.normalize(email))
+        String normalizedEmail = emailNormalizer.normalize(email);
+        recoveryRateLimitService.checkPasswordReset(normalizedEmail);
+        userRepository.findByEmailIgnoreCaseForUpdate(normalizedEmail)
                 .filter(User::isAuthenticationAllowed)
                 .ifPresent(this::issueResetTokenForLockedUser);
         auditPublisher.afterCommit(SecurityAuditEvent.of(SecurityAuditAction.PASSWORD_RESET_REQUEST,

@@ -45,12 +45,18 @@ security:
     email-verification:
       limit: ${RATE_LIMIT_VERIFY_LIMIT:5}
       window: ${RATE_LIMIT_VERIFY_WINDOW:PT15M}
+    email-verification-account:
+      limit: ${RATE_LIMIT_VERIFY_ACCOUNT_LIMIT:5}
+      window: ${RATE_LIMIT_VERIFY_ACCOUNT_WINDOW:PT15M}
     email-verification-confirm:
       limit: ${RATE_LIMIT_VERIFY_CONFIRM_LIMIT:20}
       window: ${RATE_LIMIT_VERIFY_CONFIRM_WINDOW:PT5M}
     password-reset:
       limit: ${RATE_LIMIT_RESET_LIMIT:5}
       window: ${RATE_LIMIT_RESET_WINDOW:PT15M}
+    password-reset-account:
+      limit: ${RATE_LIMIT_RESET_ACCOUNT_LIMIT:5}
+      window: ${RATE_LIMIT_RESET_ACCOUNT_WINDOW:PT15M}
     password-reset-confirm:
       limit: ${RATE_LIMIT_RESET_CONFIRM_LIMIT:10}
       window: ${RATE_LIMIT_RESET_CONFIRM_WINDOW:PT5M}
