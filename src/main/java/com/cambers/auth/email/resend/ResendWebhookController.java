@@ -1,8 +1,5 @@
-package com.cambers.auth.controller;
+package com.cambers.auth.email.resend;
 
-import com.cambers.auth.email.resend.ResendWebhookService;
-import com.cambers.auth.email.resend.ResendWebhookVerifier;
-import com.cambers.auth.email.resend.VerifiedResendWebhook;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,14 +10,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Provider callback adapter owned by the delivery module.
+ *
+ * <p>Keeping this controller next to the Resend verifier and handler prevents
+ * external web adapters from reaching into provider-specific module internals.</p>
+ */
 @RestController
 @RequestMapping("/api/v1/webhooks/resend")
-public class ResendWebhookController {
+class ResendWebhookController {
 
     private final ResendWebhookVerifier verifier;
     private final ResendWebhookService webhookService;
 
-    public ResendWebhookController(
+    ResendWebhookController(
             ResendWebhookVerifier verifier,
             ResendWebhookService webhookService) {
         this.verifier = verifier;
@@ -29,7 +32,7 @@ public class ResendWebhookController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void receive(
+    void receive(
             @RequestBody byte[] rawBody,
             @RequestHeader HttpHeaders headers) {
         VerifiedResendWebhook verified = verifier.verify(rawBody, headers);
