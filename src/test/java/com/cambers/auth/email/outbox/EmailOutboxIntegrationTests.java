@@ -1,10 +1,10 @@
 package com.cambers.auth.email.outbox;
 
+import com.cambers.auth.account.internal.persistence.OneTimeTokenRepository;
+import com.cambers.auth.account.internal.persistence.UserRepository;
+import com.cambers.auth.authentication.internal.persistence.AuthSessionRepository;
+import com.cambers.auth.authentication.internal.persistence.RefreshTokenRepository;
 import com.cambers.auth.email.TransactionalEmail;
-import com.cambers.auth.repository.AuthSessionRepository;
-import com.cambers.auth.repository.OneTimeTokenRepository;
-import com.cambers.auth.repository.RefreshTokenRepository;
-import com.cambers.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
