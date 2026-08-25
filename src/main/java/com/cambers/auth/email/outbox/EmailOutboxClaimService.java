@@ -1,8 +1,6 @@
 package com.cambers.auth.email.outbox;
 
 import com.cambers.auth.config.properties.EmailOutboxProperties;
-import com.cambers.auth.email.resend.ResendEmailEventMapper;
-import com.cambers.auth.email.resend.ResendWebhookEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,20 +19,17 @@ public class EmailOutboxClaimService {
     private static final Logger log = LoggerFactory.getLogger(EmailOutboxClaimService.class);
 
     private final EmailOutboxRepository repository;
-    private final ResendWebhookEventRepository webhookEventRepository;
-    private final ResendEmailEventMapper eventMapper;
+    private final EmailDeliveryStatusLookup deliveryStatusLookup;
     private final EmailOutboxProperties properties;
     private final Clock clock;
 
     public EmailOutboxClaimService(
             EmailOutboxRepository repository,
-            ResendWebhookEventRepository webhookEventRepository,
-            ResendEmailEventMapper eventMapper,
+            EmailDeliveryStatusLookup deliveryStatusLookup,
             EmailOutboxProperties properties,
             Clock clock) {
         this.repository = repository;
-        this.webhookEventRepository = webhookEventRepository;
-        this.eventMapper = eventMapper;
+        this.deliveryStatusLookup = deliveryStatusLookup;
         this.properties = properties;
         this.clock = clock;
     }
@@ -70,19 +65,18 @@ public class EmailOutboxClaimService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void reconcileProviderDeliveryStatus(UUID messageId, String providerMessageId) {
         EmailOutboxMessage message = repository.findById(messageId)
-                .orElseThrow(() -> new IllegalStateException("Email outbox message disappeared before webhook reconciliation"));
+                .orElseThrow(() -> new IllegalStateException("Email outbox message disappeared before delivery reconciliation"));
         if (!providerMessageId.equals(message.getProviderMessageId())) {
             return;
         }
 
         Instant now = clock.instant();
-        webhookEventRepository.findTopByProviderMessageIdOrderByEventCreatedAtDesc(providerMessageId)
-                .ifPresent(event -> eventMapper.deliveryStatus(event.getEventType())
-                        .ifPresent(status -> message.applyDeliveryStatus(
-                                status,
-                                event.getEventCreatedAt(),
-                                now
-                        )));
+        deliveryStatusLookup.findLatest(providerMessageId)
+                .ifPresent(update -> message.applyDeliveryStatus(
+                        update.status(),
+                        update.occurredAt(),
+                        now
+                ));
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
