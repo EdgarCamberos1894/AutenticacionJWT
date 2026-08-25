@@ -3,6 +3,7 @@ package com.cambers.auth.email.resend;
 import com.cambers.auth.email.EmailTag;
 import com.cambers.auth.email.TransactionalEmail;
 import com.cambers.auth.email.outbox.EmailDeliveryStatus;
+import com.cambers.auth.email.outbox.EmailOutboxClaimService;
 import com.cambers.auth.email.outbox.EmailOutboxCrypto;
 import com.cambers.auth.email.outbox.EmailOutboxMessage;
 import com.cambers.auth.email.outbox.EmailOutboxPurpose;
@@ -47,6 +48,7 @@ class ResendWebhookIntegrationTests {
     @Autowired private MockMvc mockMvc;
     @Autowired private EmailOutboxRepository outboxRepository;
     @Autowired private EmailOutboxCrypto outboxCrypto;
+    @Autowired private EmailOutboxClaimService claimService;
     @Autowired private ResendWebhookEventRepository eventRepository;
 
     @BeforeEach
@@ -73,6 +75,35 @@ class ResendWebhookIntegrationTests {
         performSignedWebhook("msg_delayed_late", delayedBody).andExpect(status().isNoContent());
         assertThat(outboxRepository.findById(message.getId()).orElseThrow().getDeliveryStatus())
                 .isEqualTo(EmailDeliveryStatus.DELIVERED);
+    }
+
+    @Test
+    void webhookArrivingBeforeProviderAcceptanceIsReconciledAfterAcceptanceCommits() throws Exception {
+        EmailOutboxMessage message = outboxRepository.saveAndFlush(pendingOutboxMessage());
+        var claimed = claimService.claimNext("worker-a").orElseThrow();
+        Instant deliveredAt = Instant.now();
+
+        performSignedWebhook(
+                "msg_early_delivery",
+                webhookBody("email.delivered", deliveredAt)
+        ).andExpect(status().isNoContent());
+
+        assertThat(eventRepository.count()).isEqualTo(1);
+        assertThat(outboxRepository.findById(message.getId()).orElseThrow().getDeliveryStatus())
+                .isEqualTo(EmailDeliveryStatus.QUEUED);
+
+        boolean accepted = claimService.markAccepted(
+                claimed.id(),
+                "worker-a",
+                PROVIDER_MESSAGE_ID
+        );
+        assertThat(accepted).isTrue();
+
+        claimService.reconcileProviderDeliveryStatus(claimed.id(), PROVIDER_MESSAGE_ID);
+
+        EmailOutboxMessage reconciled = outboxRepository.findById(message.getId()).orElseThrow();
+        assertThat(reconciled.getDeliveryStatus()).isEqualTo(EmailDeliveryStatus.DELIVERED);
+        assertThat(reconciled.getProviderMessageId()).isEqualTo(PROVIDER_MESSAGE_ID);
     }
 
     @Test
@@ -105,6 +136,14 @@ class ResendWebhookIntegrationTests {
     }
 
     private EmailOutboxMessage acceptedOutboxMessage() {
+        EmailOutboxMessage message = pendingOutboxMessage();
+        Instant now = Instant.now();
+        message.claim("test-worker", now);
+        message.markAccepted(PROVIDER_MESSAGE_ID, now);
+        return outboxRepository.saveAndFlush(message);
+    }
+
+    private EmailOutboxMessage pendingOutboxMessage() {
         UUID id = UUID.randomUUID();
         Instant now = Instant.now();
         TransactionalEmail email = new TransactionalEmail(
@@ -116,16 +155,13 @@ class ResendWebhookIntegrationTests {
                 List.of(new EmailTag("category", "email_verification"))
         );
         var payload = outboxCrypto.encrypt(id, EmailOutboxPurpose.EMAIL_VERIFICATION, email);
-        EmailOutboxMessage message = new EmailOutboxMessage(
+        return new EmailOutboxMessage(
                 id,
                 EmailOutboxPurpose.EMAIL_VERIFICATION,
                 payload,
                 now,
                 now.plusSeconds(600)
         );
-        message.claim("test-worker", now);
-        message.markAccepted(PROVIDER_MESSAGE_ID, now);
-        return outboxRepository.saveAndFlush(message);
     }
 
     private String webhookBody(String type, Instant createdAt) {
