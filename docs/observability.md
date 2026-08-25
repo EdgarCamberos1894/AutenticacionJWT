@@ -84,6 +84,7 @@ Metrics and trace enrichment are best-effort auxiliary signals. An instrumentati
 | `password_reset_confirm` | `success`, `failure` | `password_reset`, `invalid_password_reset_token` |
 | `session_revocation` | `success` | `logout`, `logout_all`, `manual_revocation` |
 | `authorization` | `denied` | `authentication_required`, `access_denied` |
+| `rate_limit` | `denied`, `failure` | `rate_limit_exceeded`, `rate_limit_backend_unavailable` |
 
 Generic verification-resend and password-reset-request events deliberately contain no account identifier and have the same action/outcome/reason whether or not the supplied email maps to an eligible account. Telemetry must not recreate an account-enumeration side channel that the HTTP contract intentionally avoids.
 
@@ -107,6 +108,8 @@ Useful operational alerts include:
 - abnormal increases in `login / failure / invalid_credentials`;
 - any sustained increase in `refresh / detected / refresh_token_reuse`;
 - spikes in `authorization / denied`;
+- increases in `rate_limit / denied / rate_limit_exceeded`;
+- any `rate_limit / failure / rate_limit_backend_unavailable` signal;
 - divergence between accepted password-reset requests and provider delivery health;
 - outbox dead-letter growth or webhook delivery failures from the existing email-delivery subsystem.
 

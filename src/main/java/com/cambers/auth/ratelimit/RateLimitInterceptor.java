@@ -1,6 +1,11 @@
 package com.cambers.auth.ratelimit;
 
 import com.cambers.auth.exception.ProblemCode;
+import com.cambers.auth.observability.SecurityAuditAction;
+import com.cambers.auth.observability.SecurityAuditEvent;
+import com.cambers.auth.observability.SecurityAuditOutcome;
+import com.cambers.auth.observability.SecurityAuditPublisher;
+import com.cambers.auth.observability.SecurityAuditReason;
 import com.cambers.auth.security.SecurityProblemWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,16 +24,19 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private final RequestRateLimiter requestRateLimiter;
     private final ClientIpResolver clientIpResolver;
     private final SecurityProblemWriter problemWriter;
+    private final SecurityAuditPublisher auditPublisher;
 
     public RateLimitInterceptor(
             RateLimitPolicyResolver policyResolver,
             RequestRateLimiter requestRateLimiter,
             ClientIpResolver clientIpResolver,
-            SecurityProblemWriter problemWriter) {
+            SecurityProblemWriter problemWriter,
+            SecurityAuditPublisher auditPublisher) {
         this.policyResolver = policyResolver;
         this.requestRateLimiter = requestRateLimiter;
         this.clientIpResolver = clientIpResolver;
         this.problemWriter = problemWriter;
+        this.auditPublisher = auditPublisher;
     }
 
     @Override
@@ -57,6 +65,13 @@ public class RateLimitInterceptor implements HandlerInterceptor {
                 return true;
             }
 
+            auditPublisher.now(SecurityAuditEvent.of(
+                    SecurityAuditAction.RATE_LIMIT,
+                    SecurityAuditOutcome.DENIED,
+                    SecurityAuditReason.RATE_LIMIT_EXCEEDED,
+                    null,
+                    null
+            ));
             response.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(decision.retryAfterSeconds()));
             problemWriter.write(
                     request,
@@ -67,6 +82,13 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             );
             return false;
         } catch (RateLimitBackendUnavailableException exception) {
+            auditPublisher.now(SecurityAuditEvent.of(
+                    SecurityAuditAction.RATE_LIMIT,
+                    SecurityAuditOutcome.FAILURE,
+                    SecurityAuditReason.RATE_LIMIT_BACKEND_UNAVAILABLE,
+                    null,
+                    null
+            ));
             log.error(
                     "Rate-limit backend unavailable for policy {} on {}",
                     namedPolicy.name(),

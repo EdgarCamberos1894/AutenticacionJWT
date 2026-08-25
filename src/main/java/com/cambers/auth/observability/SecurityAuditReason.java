@@ -13,7 +13,9 @@ public enum SecurityAuditReason {
     MANUAL_REVOCATION("manual_revocation"),
     PASSWORD_RESET("password_reset"),
     AUTHENTICATION_REQUIRED("authentication_required"),
-    ACCESS_DENIED("access_denied");
+    ACCESS_DENIED("access_denied"),
+    RATE_LIMIT_EXCEEDED("rate_limit_exceeded"),
+    RATE_LIMIT_BACKEND_UNAVAILABLE("rate_limit_backend_unavailable");
 
     private final String metricValue;
 

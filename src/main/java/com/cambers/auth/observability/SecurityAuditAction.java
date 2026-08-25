@@ -9,7 +9,8 @@ public enum SecurityAuditAction {
     PASSWORD_RESET_REQUEST("auth.password_reset.request", "password_reset_request"),
     PASSWORD_RESET_CONFIRM("auth.password_reset.confirm", "password_reset_confirm"),
     SESSION_REVOCATION("auth.session.revocation", "session_revocation"),
-    AUTHORIZATION("auth.authorization", "authorization");
+    AUTHORIZATION("auth.authorization", "authorization"),
+    RATE_LIMIT("auth.rate_limit", "rate_limit");
 
     private final String eventName;
     private final String metricValue;
