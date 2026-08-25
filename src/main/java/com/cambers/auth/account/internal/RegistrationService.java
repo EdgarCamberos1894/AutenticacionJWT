@@ -2,17 +2,22 @@ package com.cambers.auth.account.internal;
 
 import com.cambers.auth.account.AccountRegistration;
 import com.cambers.auth.account.EmailNormalizer;
+import com.cambers.auth.account.RegisterRequest;
+import com.cambers.auth.account.RegistrationResponse;
 import com.cambers.auth.account.RoleName;
 import com.cambers.auth.account.internal.model.User;
 import com.cambers.auth.account.internal.persistence.UserRepository;
-import com.cambers.auth.dto.RegisterRequest;
-import com.cambers.auth.dto.RegistrationResponse;
 import com.cambers.auth.exception.EmailAlreadyRegisteredException;
-import com.cambers.auth.observability.*;
+import com.cambers.auth.observability.SecurityAuditAction;
+import com.cambers.auth.observability.SecurityAuditEvent;
+import com.cambers.auth.observability.SecurityAuditOutcome;
+import com.cambers.auth.observability.SecurityAuditPublisher;
+import com.cambers.auth.observability.SecurityAuditReason;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Clock;
 import java.time.Instant;
 
@@ -36,15 +41,19 @@ public class RegistrationService implements AccountRegistration {
         this.clock = clock;
     }
 
-    @Override @Transactional
+    @Override
+    @Transactional
     public RegistrationResponse register(RegisterRequest request) {
         String normalizedEmail = emailNormalizer.normalize(request.email());
         if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) throw alreadyRegistered();
         Instant now = clock.instant();
         User user = new User(normalizedEmail, passwordEncoder.encode(request.password()), now);
         user.assignRole(RoleName.USER, now);
-        try { userRepository.saveAndFlush(user); }
-        catch (DataIntegrityViolationException exception) { throw alreadyRegistered(); }
+        try {
+            userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException exception) {
+            throw alreadyRegistered();
+        }
         emailVerificationService.issueVerification(user);
         auditPublisher.afterCommit(SecurityAuditEvent.of(SecurityAuditAction.REGISTRATION, SecurityAuditOutcome.SUCCESS,
                 SecurityAuditReason.NONE, user.getId(), null));

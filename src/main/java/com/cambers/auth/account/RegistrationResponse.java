@@ -1,4 +1,4 @@
-package com.cambers.auth.dto;
+package com.cambers.auth.account;
 
 import java.util.UUID;
 
