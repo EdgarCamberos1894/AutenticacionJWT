@@ -2,7 +2,6 @@ package com.cambers.auth.email.outbox;
 
 import com.cambers.auth.email.EmailTag;
 import com.cambers.auth.email.TransactionalEmail;
-import com.cambers.auth.email.resend.ResendWebhookEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,13 +26,11 @@ class EmailOutboxProcessingServiceIntegrationTests {
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
 
     @Autowired private EmailOutboxRepository outboxRepository;
-    @Autowired private ResendWebhookEventRepository webhookEventRepository;
     @Autowired private EmailOutboxCrypto crypto;
     @Autowired private EmailOutboxProcessingService processingService;
 
     @BeforeEach
     void cleanDatabase() {
-        webhookEventRepository.deleteAllInBatch();
         outboxRepository.deleteAllInBatch();
     }
 
