@@ -87,8 +87,12 @@ class ResendWebhookIntegrationTests {
                 "msg_early_delivery",
                 webhookBody("email.delivered", deliveredAt)
         ).andExpect(status().isNoContent());
+        performSignedWebhook(
+                "msg_early_opened",
+                webhookBody("email.opened", deliveredAt.plusSeconds(1))
+        ).andExpect(status().isNoContent());
 
-        assertThat(eventRepository.count()).isEqualTo(1);
+        assertThat(eventRepository.count()).isEqualTo(2);
         assertThat(outboxRepository.findById(message.getId()).orElseThrow().getDeliveryStatus())
                 .isEqualTo(EmailDeliveryStatus.QUEUED);
 
