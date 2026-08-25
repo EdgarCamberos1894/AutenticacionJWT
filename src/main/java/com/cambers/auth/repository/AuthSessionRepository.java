@@ -19,7 +19,7 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> 
     @Query("""
             select session
             from AuthSession session
-            where session.user.id = :userId
+            where session.userId = :userId
               and session.revokedAt is null
               and session.expiresAt > :now
             order by session.createdAt desc
@@ -38,7 +38,7 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> 
             select session
             from AuthSession session
             where session.id = :sessionId
-              and session.user.id = :userId
+              and session.userId = :userId
             """)
     Optional<AuthSession> findByIdAndUserIdForUpdate(
             @Param("sessionId") UUID sessionId,
@@ -50,7 +50,7 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> 
             update AuthSession session
             set session.revokedAt = :revokedAt,
                 session.revocationReason = :reason
-            where session.user.id = :userId
+            where session.userId = :userId
               and session.revokedAt is null
             """)
     int revokeAllActiveByUserId(
