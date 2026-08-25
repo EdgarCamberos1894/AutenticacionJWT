@@ -51,23 +51,32 @@ class EmailOutboxClaimServiceIntegrationTests {
     }
 
     @Test
-    void expiredLeaseIsRecoveredByAnotherWorker() {
+    void expiredLeaseIsRecoveredAndOldWorkerCanNoLongerComplete() {
         EmailOutboxMessage message = pendingMessage();
         message.claim("dead-worker", Instant.now().minusSeconds(60));
         outboxRepository.saveAndFlush(message);
 
-        var recovered = claimService.claimNext("worker-b");
+        var recovered = claimService.claimNext("worker-b").orElseThrow();
 
-        assertThat(recovered).isPresent();
-        assertThat(recovered.orElseThrow().attemptCount()).isEqualTo(2);
+        assertThat(recovered.attemptCount()).isEqualTo(2);
+        assertThat(claimService.markAccepted(recovered.id(), "dead-worker", "stale-provider-id")).isFalse();
+
+        EmailOutboxMessage stillOwnedByReplacement = outboxRepository.findById(message.getId()).orElseThrow();
+        assertThat(stillOwnedByReplacement.getStatus()).isEqualTo(EmailOutboxStatus.PROCESSING);
+        assertThat(stillOwnedByReplacement.getProviderMessageId()).isNull();
+
+        assertThat(claimService.markAccepted(recovered.id(), "worker-b", "provider-id")).isTrue();
+        EmailOutboxMessage completed = outboxRepository.findById(message.getId()).orElseThrow();
+        assertThat(completed.getStatus()).isEqualTo(EmailOutboxStatus.SENT);
+        assertThat(completed.getProviderMessageId()).isEqualTo("provider-id");
     }
 
     @Test
-    void retryableFailureReschedulesAndStaleWorkerCannotCompleteMessage() {
+    void retryableFailureReschedulesAndWrongWorkerCannotCompleteMessage() {
         EmailOutboxMessage message = outboxRepository.saveAndFlush(pendingMessage());
         var claimed = claimService.claimNext("worker-a").orElseThrow();
 
-        claimService.markAccepted(claimed.id(), "worker-b", "wrong-owner");
+        assertThat(claimService.markAccepted(claimed.id(), "worker-b", "wrong-owner")).isFalse();
         assertThat(outboxRepository.findById(message.getId()).orElseThrow().getStatus())
                 .isEqualTo(EmailOutboxStatus.PROCESSING);
 
@@ -79,7 +88,7 @@ class EmailOutboxClaimServiceIntegrationTests {
     }
 
     @Test
-    void permanentFailureMovesMessageToDeadState() {
+    void permanentFailureMovesMessageToDeadStateAndScrubsPayload() {
         EmailOutboxMessage message = outboxRepository.saveAndFlush(pendingMessage());
         var claimed = claimService.claimNext("worker-a").orElseThrow();
 
@@ -88,6 +97,8 @@ class EmailOutboxClaimServiceIntegrationTests {
         EmailOutboxMessage failed = outboxRepository.findById(message.getId()).orElseThrow();
         assertThat(failed.getStatus()).isEqualTo(EmailOutboxStatus.DEAD);
         assertThat(failed.getDeliveryStatus()).isEqualTo(EmailDeliveryStatus.FAILED);
+        assertThat(failed.getNonce()).isNull();
+        assertThat(failed.getCiphertext()).isNull();
     }
 
     private EmailOutboxMessage pendingMessage() {
