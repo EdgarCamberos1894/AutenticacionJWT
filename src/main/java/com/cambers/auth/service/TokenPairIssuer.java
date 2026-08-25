@@ -4,7 +4,6 @@ import com.cambers.auth.config.properties.SessionProperties;
 import com.cambers.auth.dto.TokenPairResponse;
 import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.RefreshToken;
-import com.cambers.auth.entity.User;
 import com.cambers.auth.repository.RefreshTokenRepository;
 import com.cambers.auth.security.jwt.IssuedAccessToken;
 import com.cambers.auth.security.jwt.JwtTokenService;
@@ -16,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Set;
+import java.util.UUID;
 
 @Component
 public class TokenPairIssuer {
@@ -40,7 +41,11 @@ public class TokenPairIssuer {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public TokenPairResponse issue(User user, AuthSession session, RefreshToken parentToken) {
+    public TokenPairResponse issue(
+            UUID accountId,
+            Set<String> roles,
+            AuthSession session,
+            RefreshToken parentToken) {
         Instant now = clock.instant();
         Instant refreshExpiresAt = now.plus(sessionProperties.refreshTokenTtl());
         if (refreshExpiresAt.isAfter(session.getExpiresAt())) {
@@ -57,7 +62,7 @@ public class TokenPairIssuer {
         );
         refreshTokenRepository.save(refreshToken);
 
-        IssuedAccessToken accessToken = jwtTokenService.issueAccessToken(user, session.getId());
+        IssuedAccessToken accessToken = jwtTokenService.issueAccessToken(accountId, roles, session.getId());
         return new TokenPairResponse(
                 accessToken.value(),
                 generatedRefreshToken.value(),
