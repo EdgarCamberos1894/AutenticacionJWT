@@ -1,10 +1,10 @@
 package com.cambers.auth.authentication.internal;
 
 import com.cambers.auth.authentication.AuthenticationClientMetadata;
+import com.cambers.auth.authentication.LoginRequest;
+import com.cambers.auth.authentication.RefreshTokenRequest;
 import com.cambers.auth.authentication.SessionAuthentication;
-import com.cambers.auth.dto.LoginRequest;
-import com.cambers.auth.dto.RefreshTokenRequest;
-import com.cambers.auth.dto.TokenPairResponse;
+import com.cambers.auth.authentication.TokenPairResponse;
 import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.exception.UnauthorizedException;
 import com.cambers.auth.observability.SecurityAuditAction;

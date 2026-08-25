@@ -1,4 +1,4 @@
-package com.cambers.auth.dto;
+package com.cambers.auth.authentication;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

@@ -1,9 +1,9 @@
 package com.cambers.auth.authentication.internal;
 
+import com.cambers.auth.authentication.AuthSessionResponse;
 import com.cambers.auth.authentication.SessionManagement;
 import com.cambers.auth.authentication.internal.model.*;
 import com.cambers.auth.authentication.internal.persistence.AuthSessionRepository;
-import com.cambers.auth.dto.AuthSessionResponse;
 import com.cambers.auth.observability.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,4 +1,4 @@
-package com.cambers.auth.dto;
+package com.cambers.auth.authentication;
 
 import java.time.Instant;
 import java.util.UUID;
