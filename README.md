@@ -8,8 +8,8 @@ The layered implementation is intentionally conventional: controllers own HTTP c
 
 - `legacy-jwt-v1`: immutable reference to the original implementation.
 - `modern-base`: reviewed authentication baseline used as the common behavior reference.
-- `architecture/layered`: conventional layered implementation.
-- `architecture/modular`: reserved for the future feature-oriented/modular comparison.
+- `architecture/layered`: conventional layered implementation reference.
+- `architecture/modular`: reserved for the feature-oriented/modular comparison.
 
 ## Stack
 
@@ -20,6 +20,7 @@ The layered implementation is intentionally conventional: controllers own HTTP c
 - Flyway
 - Redis 8.10.1 reference image
 - Resend Email API over Spring `RestClient`
+- AES-256-GCM encrypted transactional email outbox
 - Argon2id password hashing with legacy BCrypt verification/upgrade support
 - RS256 JWT access tokens
 - Testcontainers
@@ -33,9 +34,9 @@ The layered implementation is intentionally conventional: controllers own HTTP c
 
 Access tokens are RS256-signed JWTs and are intentionally stateless. The default lifetime is 10 minutes.
 
-Claims include `iss`, `sub`, `aud`, `iat`, `nbf`, `exp`, `jti`, `sid`, `roles` and `token_type=access`. Spring Security validates the signature, issuer, audience, token type, UUID-shaped subject and UUID-shaped session id before accepting the token.
+Claims include `iss`, `sub`, `aud`, `iat`, `nbf`, `exp`, `jti`, `sid`, `roles` and `token_type=access`. Spring Security validates signature, issuer, audience, token type, UUID-shaped subject and UUID-shaped session id before accepting a token.
 
-Only the `local` and `test` profiles generate an ephemeral 3072-bit RSA key pair at startup. The `prod` profile requires explicit public/private key resources through `JWT_PUBLIC_KEY_LOCATION` and `JWT_PRIVATE_KEY_LOCATION`; configured production keys must belong to the same pair and be at least 3072 bits.
+Only the `local` and `test` profiles generate an ephemeral 3072-bit RSA key pair. The `prod` profile requires explicit public/private key resources through `JWT_PUBLIC_KEY_LOCATION` and `JWT_PRIVATE_KEY_LOCATION`; configured keys must belong to the same pair and be at least 3072 bits.
 
 ### Sessions and refresh tokens
 
@@ -45,11 +46,11 @@ Only SHA-256 hashes of refresh tokens are persisted. Refresh uses rotation: a su
 
 Refresh rotation is serialized with a pessimistic database lock so concurrent refresh attempts cannot silently create multiple valid descendants.
 
-Session revocation immediately prevents further refreshes. An access JWT already issued remains valid until its expiration, at most 10 minutes with the default configuration. The service deliberately avoids a database lookup on every authenticated request merely to simulate instant JWT revocation.
+Session revocation immediately prevents further refreshes. An access JWT already issued remains valid until expiration, at most 10 minutes with the default configuration. The service deliberately avoids a database lookup on every authenticated request merely to simulate instant JWT revocation.
 
 ### Passwords
 
-New password hashes use Argon2id. A `DelegatingPasswordEncoder` retains BCrypt support so legacy BCrypt hashes, including the unprefixed `$2a/$2b/$2y` form produced by the original implementation, can authenticate and be upgraded to Argon2id after a successful login. Plain-text passwords are never persisted.
+New password hashes use Argon2id. A `DelegatingPasswordEncoder` retains BCrypt support so legacy BCrypt hashes, including unprefixed `$2a/$2b/$2y` values produced by the original implementation, can authenticate and be upgraded to Argon2id after a successful login. Plain-text passwords are never persisted.
 
 ### Account status and roles
 
@@ -59,87 +60,170 @@ Supported roles are closed application values (`USER`, `ADMIN`) persisted direct
 
 ### Email verification and password recovery
 
-Verification and password-reset credentials are opaque one-time values. Only SHA-256 hashes are persisted. Issuance is serialized by locking the user row and PostgreSQL enforces at most one active token for each user/purpose.
+Verification and password-reset credentials are opaque one-time values. Only SHA-256 hashes are stored in `one_time_tokens`. Issuance is serialized by locking the user row and PostgreSQL enforces at most one active token for each user/purpose.
 
 Verification tokens expire after 30 minutes by default; password-reset tokens expire after 15 minutes by default. Successful password reset changes the Argon2id password hash and revokes every existing authentication session and refresh token for the user.
 
 Recovery/request responses are deliberately generic where account discovery would otherwise leak information.
 
-## Transactional email delivery with Resend
+## Durable transactional email delivery
+
+Email verification and password-reset delivery use a transactional outbox. Token creation and the corresponding delivery intent are committed in the **same PostgreSQL transaction**.
+
+```text
+one-time token (hash only)
+        +
+encrypted email outbox row
+        |
+      COMMIT
+        |
+  outbox worker
+        |
+      Resend
+        |
+verified webhook
+```
+
+This closes the failure window where application state could commit and the process could terminate before a provider request was made.
+
+### Encrypted outbox
+
+The outbox stores the recoverable email payload only while delivery is actionable. The payload contains the complete provider-neutral `TransactionalEmail`, including the action link with the one-time credential, and is protected with:
+
+- AES-256-GCM;
+- a random 96-bit nonce for each message;
+- a 128-bit authentication tag;
+- authenticated additional data containing `messageId`, purpose and encryption `keyId`.
+
+The outbox message id is the same UUID as the associated one-time-token issuance. The raw token therefore remains hash-only in the identity/token tables; its only recoverable copy is inside the encrypted, short-lived outbox payload.
+
+Terminal rows (`SENT`, `DEAD`, `CANCELLED`) have `nonce` and `ciphertext` scrubbed. Delivery metadata can remain for operational correlation without retaining a decryptable recovery credential.
+
+When a verification/reset token is superseded, the previous outbox row is cancelled and scrubbed in the same transaction before the new token/outbox pair is created. This prevents a delayed worker from sending an already-invalid action link.
+
+### Encryption-key rotation
+
+Outbox encryption supports one active key and one previous key. New messages always use the active key; pending messages encrypted with the previous key remain readable during a controlled rotation.
+
+Safe rotation procedure:
+
+1. Move the current `EMAIL_OUTBOX_ACTIVE_KEY_ID` / `EMAIL_OUTBOX_ACTIVE_KEY` values to the corresponding `PREVIOUS` variables.
+2. Generate a new random 32-byte AES key and a new key id and deploy them as the active pair.
+3. Allow pending/processing messages encrypted with the previous key to reach a terminal state.
+4. Verify no actionable outbox rows still reference the previous key id.
+5. Remove the previous key pair in a later deployment.
+
+Do not perform a second key rotation while actionable messages still require the configured previous key.
+
+Example key generation:
+
+```bash
+openssl rand -base64 32
+```
+
+### Multi-instance worker, leases and retries
+
+Workers claim due messages with PostgreSQL `FOR UPDATE SKIP LOCKED`, persist a lease in a short transaction, release the database lock, and only then call the email provider. Provider network latency is therefore never held inside the claim transaction.
+
+If a worker dies, another instance can reclaim the row after `EMAIL_OUTBOX_LEASE_DURATION`. A stale worker cannot later complete a lease it no longer owns.
+
+Retryable provider/network failures use bounded exponential backoff with jitter. Delivery stops when the configured attempt limit is exhausted or the one-time credential would expire before the next attempt. Expired messages become terminal rather than sending dead recovery links.
+
+A crash after Resend accepted the email but before PostgreSQL recorded completion is also safe: retry uses the exact same issuance-scoped Resend `Idempotency-Key`.
+
+### Resend adapter
 
 Production email is sent through Resend's HTTPS Email API. SMTP and `JavaMailSender` are not part of the production path.
 
-Application flows depend on the provider-neutral `VerificationTokenDelivery`, `PasswordResetTokenDelivery` and `TransactionalEmailSender` contracts. Resend-specific HTTP behavior is isolated under `email.resend`, so authentication services do not depend on provider request/response models.
+Authentication flows and the outbox worker depend on the provider-neutral `TransactionalEmailSender`; Resend-specific HTTP/request/response behavior is isolated under `email.resend`.
 
-Each one-time-token issuance has its own UUID. That issuance id becomes the Resend `Idempotency-Key` namespace:
+Each issuance uses a stable provider idempotency namespace:
 
 ```text
 auth/email-verification/{issuanceId}
 auth/password-reset/{issuanceId}
 ```
 
-Retrying delivery for the same issuance therefore reuses the same key and cannot intentionally create a duplicate send. A genuine resend generates a new one-time token and a new issuance id, so it remains a distinct email.
-
-Both HTML and explicit plain-text bodies are sent. Authentication links are built with URI components rather than string concatenation, dynamic HTML values are escaped, and the critical action never depends on remote images or external CSS. Messages carry low-cardinality Resend tags (`email_verification` or `password_reset`) for provider-side filtering.
-
-The Resend adapter:
+The adapter:
 
 - authenticates with a server-side Bearer API key;
-- uses HTTPS-only provider configuration;
-- applies bounded connection and read timeouts;
+- requires HTTPS provider configuration;
+- applies bounded connect/read timeouts;
+- sends HTML and explicit plain-text bodies;
 - sends an `Idempotency-Key` on every transactional email;
 - classifies provider/network failures as retryable or permanent;
-- never exposes Resend error messages to authentication clients;
-- never logs the API key, raw token or recipient address;
-- logs only safe correlation data such as issuance/provider message identifiers and provider status/code.
+- never exposes Resend response messages to authentication clients;
+- never logs the API key, recipient address or raw token in production;
+- logs only safe correlation/status metadata.
 
-Delivery is triggered after the authentication database transaction commits. A provider failure therefore cannot roll back a successfully persisted account/token state. The current implementation intentionally does **not** perform blind synchronous retries and does not claim guaranteed delivery. Durable retries require an outbox/queue whose sensitive delivery payload is encrypted at rest; that is a separate reliability boundary, not something to emulate with `@Async` or by storing raw recovery tokens in plaintext.
+Messages use low-cardinality provider tags such as `email_verification` and `password_reset`.
+
+### Verified Resend webhooks
+
+Delivery-event ingestion is exposed at:
+
+```text
+POST /api/v1/webhooks/resend
+```
+
+This route does not use the application's bearer JWT because Resend is the caller. Instead it authenticates every request using the Resend/Svix signing secret.
+
+Signature verification occurs over the **raw request body before JSON parsing**. The implementation validates the Svix webhook id, timestamp and signature, computes HMAC-SHA256 over `id.timestamp.rawBody`, supports rotated `v1` signatures in the signature header, compares signatures in constant time and rejects timestamps outside the configured replay tolerance (5 minutes by default).
+
+Webhook ids are persisted idempotently, so provider retries do not apply the same event twice. Only safe metadata is retained (`webhookId`, Resend email id, event type and timestamps); the complete webhook payload containing recipient/subject information is not stored.
+
+Tracked delivery states include queued, accepted, delayed, delivered, cancelled, failed, suppressed, bounced and complained. State progression is monotonic so an older delayed event cannot regress a later delivered/bounced/complained state.
+
+The worker/webhook race is also handled: if a webhook arrives before the worker stores Resend's email id, the event remains persisted and is reconciled when provider acceptance is committed.
 
 ### Resend production setup
 
 For production:
 
-1. Verify the sending domain in Resend and publish the DNS records required by Resend (including SPF/DKIM).
+1. Verify the sending domain in Resend and publish its required SPF/DKIM records.
 2. Create a Resend API key with **Sending access**, restricted to that sending domain when possible.
-3. Store `RESEND_API_KEY` only as a server secret. Never expose it to browser/mobile code or commit it to Git.
+3. Keep `RESEND_API_KEY` server-side only.
 4. Set `RESEND_FROM_ADDRESS` to an address on the verified domain.
-5. Optionally configure `RESEND_FROM_NAME` and `RESEND_REPLY_TO`.
+5. Create/configure the Resend webhook pointing at `/api/v1/webhooks/resend` for the required `email.*` delivery events.
+6. Store that endpoint's signing secret as `RESEND_WEBHOOK_SIGNING_SECRET`.
 
-`onboarding@resend.dev` is only the non-production default used so local/test configuration can bind without a real provider credential. The `prod` profile requires an explicit API key and sender address.
+`onboarding@resend.dev` and the development cryptographic defaults exist only so non-production profiles can bind without production secrets. `prod` requires explicit provider/outbox secrets.
 
 ## Distributed rate limiting
 
-Sensitive public authentication endpoints are protected by a Redis-backed sliding-window limiter implemented with sorted sets and an atomic Lua script. Redis server time is used for window calculations, keeping the decision consistent across application instances.
+Sensitive public authentication endpoints are protected by a Redis-backed sliding-window limiter implemented with sorted sets and an atomic Lua script. Redis server time is used for window calculations, keeping decisions consistent across application instances.
 
-Per-client identifiers are SHA-256 hashed before becoming part of Redis keys. Login additionally applies a separate normalized-email account bucket, so changing source IP does not bypass account-level throttling.
+Per-client identifiers are SHA-256 hashed before becoming Redis keys. Login additionally applies a separate normalized-email account bucket, so changing source IP does not bypass account-level throttling.
 
-When a policy is exceeded, the API returns `429 Too Many Requests`, RFC 9457 Problem Details and `Retry-After`.
+When a policy is exceeded, the API returns `429 Too Many Requests`, RFC 9457 Problem Details and `Retry-After`. If Redis is unavailable while rate limiting is enabled, the protected authentication surface fails closed with `503 Service Unavailable` rather than silently bypassing enforcement.
 
-If Redis is unavailable while rate limiting is enabled, the protected authentication surface fails closed with `503 Service Unavailable` rather than silently bypassing enforcement.
-
-`X-Forwarded-For` is consulted only when the immediate remote address is configured in `TRUSTED_PROXY_ADDRESSES`. Requests received directly from untrusted addresses cannot choose their rate-limit identity by supplying forwarding headers.
-
-Rate limiting can be disabled with `RATE_LIMIT_ENABLED=false`, which removes the enforcement wiring instead of leaving a partially active limiter.
+`X-Forwarded-For` is consulted only when the immediate remote address is configured in `TRUSTED_PROXY_ADDRESSES`.
 
 ## Browser/CORS boundary
 
 CORS uses an explicit origin allowlist. Cross-origin browser access is denied when the allowlist is empty; production therefore does not open any origin by default. The `local` profile allows only `http://localhost:3000` unless `CORS_ALLOWED_ORIGINS` overrides it.
 
-Allowed cross-origin methods are limited to the methods used by the API (`GET`, `POST`, `DELETE`, `OPTIONS`), and request headers are limited to `Authorization` and `Content-Type`. Cookie credentials are not enabled. `Retry-After` and `WWW-Authenticate` are exposed so browser clients can consume authentication/rate-limit metadata.
+Allowed cross-origin methods are limited to those used by the API (`GET`, `POST`, `DELETE`, `OPTIONS`), request headers are limited to `Authorization` and `Content-Type`, and cookie credentials are not enabled.
 
 ## HTTP API
 
-Public endpoints:
+Public authentication endpoints:
 
 | Method | Endpoint | Success | Purpose |
 | --- | --- | ---: | --- |
-| `POST` | `/api/v1/auth/register` | `201` | Register a pending account |
+| `POST` | `/api/v1/auth/register` | `201` | Register a pending account and atomically enqueue verification delivery |
 | `POST` | `/api/v1/auth/login` | `200` | Authenticate and create a session |
 | `POST` | `/api/v1/auth/refresh` | `200` | Rotate a refresh token and issue a new token pair |
-| `POST` | `/api/v1/auth/email-verification` | `204` | Request/resend verification without exposing account existence |
+| `POST` | `/api/v1/auth/email-verification` | `202` | Accept a generic verification resend request for durable delivery |
 | `POST` | `/api/v1/auth/email-verification/confirm` | `204` | Consume a verification token |
-| `POST` | `/api/v1/auth/password-reset` | `204` | Request password recovery without exposing account existence |
+| `POST` | `/api/v1/auth/password-reset` | `202` | Accept a generic password-recovery request for durable delivery |
 | `POST` | `/api/v1/auth/password-reset/confirm` | `204` | Consume a reset token and replace the password |
+
+Provider callback:
+
+| Method | Endpoint | Success | Authentication |
+| --- | --- | ---: | --- |
+| `POST` | `/api/v1/webhooks/resend` | `204` | Resend/Svix HMAC signature over raw body |
 
 Authenticated endpoints:
 
@@ -150,20 +234,23 @@ Authenticated endpoints:
 | `GET` | `/api/v1/auth/sessions` | `200` | List active sessions |
 | `DELETE` | `/api/v1/auth/sessions/{sessionId}` | `204` | Revoke one owned session |
 
+`202` responses for verification resend and password-reset request are deliberately indistinguishable for known/unknown accounts. They mean the request was accepted for the applicable durable workflow, not that an account necessarily exists or that a provider has already delivered an email.
+
 Session lookup/revocation is scoped by both `sessionId` and authenticated `userId` to prevent cross-account session access.
 
-`GET /actuator/health` is public. Other application endpoints require a valid bearer access token unless explicitly permitted by the security configuration.
+`GET /actuator/health` is public. Other application endpoints require a valid bearer access token unless explicitly permitted by security configuration.
 
 ## API contract
 
 - Successful responses use HTTP semantics and resource/action DTOs rather than a universal envelope.
 - Login and refresh responses send `Cache-Control: no-store` and `Pragma: no-cache`.
-- Successful commands with no representation return `204 No Content`.
+- A genuinely deferred durable workflow may return `202 Accepted`.
+- Successful commands with no deferred work and no representation return `204 No Content`.
 - Client/server errors use RFC 9457 Problem Details with `application/problem+json`.
 - Problem responses expose stable machine-readable `code` values; human-readable `detail` text is not an API contract.
 - Request-body and method-parameter validation failures return `422 Unprocessable Content` with structured validation pointers.
 - Malformed JSON remains `400 Bad Request`.
-- Missing or invalid authentication returns `401 Unauthorized` with `WWW-Authenticate`.
+- Missing or invalid bearer authentication returns `401 Unauthorized` with `WWW-Authenticate`.
 - Authenticated requests without sufficient authority return `403 Forbidden`.
 - Unsupported methods/media negotiation retain `405`, `406` and `415` semantics.
 - Internal exception messages and stack traces are not returned to clients.
@@ -184,7 +271,7 @@ Run the application with the local profile:
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Local/test delivery logs the generated action link at DEBUG level rather than contacting Resend. Do not enable those delivery loggers in production.
+The outbox worker is enabled by default. Under `local`/`test`, the provider-neutral worker drains the encrypted outbox through `LoggingTransactionalEmailSender` instead of calling Resend. That sender logs the plain-text email body (including its local action link) at DEBUG level. Treat those logs as development-sensitive and never enable that sender/profile in production.
 
 Local defaults:
 
@@ -196,8 +283,11 @@ Local defaults:
 - Password reset URL: `http://localhost:3000/reset-password`
 - CORS origin: `http://localhost:3000`
 - JWT key pair: ephemeral 3072-bit RSA key generated for that process
+- outbox AES key/signing secret: development-only defaults
 
-Because the local key pair is ephemeral, access tokens issued before an application restart will no longer validate after the restart. Production does not use ephemeral signing keys.
+Because the local JWT key pair is ephemeral, access tokens issued before an application restart will no longer validate after restart. Production does not use ephemeral signing keys.
+
+Tests explicitly disable the scheduled outbox worker so assertions about queued/leased state are deterministic; worker behavior is covered separately by integration tests.
 
 ## Configuration
 
@@ -221,18 +311,33 @@ Core environment variables:
 | `VERIFICATION_PUBLIC_URL` | `http://localhost:3000/verify-email` | required |
 | `PASSWORD_RESET_PUBLIC_URL` | `http://localhost:3000/reset-password` | required |
 | `AUTH_EMAIL_PRODUCT_NAME` | `Authentication` | optional branding |
-| `RESEND_API_KEY` | not used by local/test delivery | required secret in `prod` |
+| `RESEND_API_KEY` | not used by local/test sender | required secret in `prod` |
 | `RESEND_FROM_ADDRESS` | `onboarding@resend.dev` outside prod | required verified-domain sender in `prod` |
 | `RESEND_FROM_NAME` | `Authentication` | optional |
 | `RESEND_REPLY_TO` | empty | optional |
 | `RESEND_BASE_URL` | `https://api.resend.com` | normally leave unchanged |
 | `RESEND_CONNECT_TIMEOUT` | `PT3S` | optional positive duration |
 | `RESEND_READ_TIMEOUT` | `PT5S` | optional positive duration |
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` in `local`; empty otherwise | set explicit browser origins when cross-origin access is required |
+| `RESEND_WEBHOOK_SIGNING_SECRET` | development-only value | required Resend/Svix `whsec_...` secret in `prod` |
+| `RESEND_WEBHOOK_TOLERANCE` | `PT5M` | optional positive replay window |
+| `EMAIL_OUTBOX_WORKER_ENABLED` | `true` | normally `true`; disable only for controlled worker separation/maintenance |
+| `EMAIL_OUTBOX_ACTIVE_KEY_ID` | `local-v1` | required non-secret identifier |
+| `EMAIL_OUTBOX_ACTIVE_KEY` | development-only AES key | required Base64-encoded 32-byte secret |
+| `EMAIL_OUTBOX_PREVIOUS_KEY_ID` | empty | optional during key rotation |
+| `EMAIL_OUTBOX_PREVIOUS_KEY` | empty | optional Base64-encoded previous key; configure together with previous id |
+| `EMAIL_OUTBOX_POLL_INTERVAL` | `PT2S` | optional positive duration |
+| `EMAIL_OUTBOX_LEASE_DURATION` | `PT30S` | optional positive duration; must exceed expected provider-call ownership window |
+| `EMAIL_OUTBOX_BASE_BACKOFF` | `PT5S` | optional positive duration |
+| `EMAIL_OUTBOX_MAX_BACKOFF` | `PT5M` | optional positive duration; cannot be below base backoff |
+| `EMAIL_OUTBOX_BATCH_SIZE` | `20` | optional `1..100` |
+| `EMAIL_OUTBOX_MAX_ATTEMPTS` | `8` | optional `1..20` |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` in `local`; empty otherwise | set explicit browser origins when needed |
 | `TRUSTED_PROXY_ADDRESSES` | empty | configure only known proxy/load-balancer addresses |
 | `RATE_LIMIT_ENABLED` | `true` | optional |
 
-Each protected flow exposes independent `RATE_LIMIT_*_LIMIT` and `RATE_LIMIT_*_WINDOW` variables in `application.yml`. Login has both a client policy and a separate `login-account` policy.
+Each protected flow exposes independent `RATE_LIMIT_*_LIMIT` and `RATE_LIMIT_*_WINDOW` variables in `application.yml`. Login has both a client policy and a separate account policy.
+
+Secrets such as JWT private keys, Resend keys, webhook secrets and outbox AES keys must come from the deployment secret store rather than Git or container images.
 
 ## Verification and CI
 
@@ -242,16 +347,25 @@ Run the complete verification suite:
 ./mvnw verify
 ```
 
-The suite includes PostgreSQL-backed authentication flows, Redis-backed rate-limit behavior, concurrent one-time-token issuance, browser CORS preflights, legacy BCrypt migration, RFC 9457 contract checks, transactional email composition, Resend HTTP/idempotency/error-classification tests and architecture rules.
+Coverage includes:
 
-Maven Enforcer requires Java 25 and a supported Maven 3.9.x toolchain. ArchUnit prevents selected dependency inversions such as controllers accessing repositories directly or entities depending on application/HTTP/security layers.
+- PostgreSQL-backed authentication/session/refresh flows;
+- Redis-backed rate-limit behavior;
+- concurrent one-time-token issuance;
+- RFC 9457 HTTP contract checks;
+- browser CORS preflights;
+- legacy BCrypt migration;
+- transactional email composition and Resend HTTP/idempotency/error classification;
+- AES-GCM round-trip, tamper detection and previous-key decryption;
+- atomic token/outbox persistence and superseded-message cancellation/scrubbing;
+- lease ownership/reclaim and retry/dead-letter behavior;
+- verified/idempotent Resend webhook ingestion, including the official Svix reference signature vector;
+- ArchUnit layered dependency rules.
 
-GitHub Actions runs Maven verification and builds the application container image. Third-party workflow actions are pinned to immutable commit SHAs and the workflow token is restricted to read-only repository contents.
+Maven Enforcer requires Java 25 and a supported Maven 3.9.x toolchain. GitHub Actions runs Maven verification and builds the application container image. Third-party workflow actions are pinned to immutable commit SHAs and the workflow token is restricted to read-only repository contents.
 
 ## Security boundaries and future extensions
 
-This template intentionally does not yet implement MFA/passkeys, social/OIDC login, device attestation, a durable encrypted email outbox, Resend delivery-event webhooks, key-ring/JWK-based signing-key rotation, or immediate per-request revocation checks for already-issued access JWTs.
+The template now includes durable encrypted email delivery and verified provider callbacks, but it intentionally does not yet implement MFA/passkeys, social/OIDC login, a JWT `kid`/JWK signing-key ring, immediate per-request revocation checks for already-issued access JWTs, full security-audit/telemetry pipelines, long-term metadata purge jobs, or OpenAPI documentation for every contract.
 
-Generic recovery responses reduce direct account enumeration but do not attempt artificial response-time equalization. A system with stricter enumeration/delivery requirements should move sensitive email delivery behind a durable encrypted asynchronous boundary instead of adding sleeps or untracked in-memory retries to request threads.
-
-If bearer credentials are ever moved to cookies, revisit CSRF protection. If deployment topology changes, update `TRUSTED_PROXY_ADDRESSES` deliberately instead of trusting arbitrary forwarded headers.
+Generic recovery responses reduce direct account enumeration but do not attempt artificial response-time equalization. If bearer credentials are ever moved to cookies, revisit CSRF protection. If deployment topology changes, update `TRUSTED_PROXY_ADDRESSES` deliberately instead of trusting arbitrary forwarded headers.
