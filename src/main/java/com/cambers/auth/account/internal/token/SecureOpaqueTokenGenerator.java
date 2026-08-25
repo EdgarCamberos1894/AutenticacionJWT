@@ -1,4 +1,4 @@
-package com.cambers.auth.security.token;
+package com.cambers.auth.account.internal.token;
 
 import org.springframework.stereotype.Component;
 
