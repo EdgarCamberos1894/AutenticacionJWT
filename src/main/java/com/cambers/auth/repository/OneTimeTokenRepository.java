@@ -18,6 +18,18 @@ public interface OneTimeTokenRepository extends JpaRepository<OneTimeToken, UUID
     @Query("select token.user.id from OneTimeToken token where token.tokenHash = :tokenHash")
     Optional<UUID> findUserIdByTokenHash(@Param("tokenHash") String tokenHash);
 
+    @Query("""
+            select token.id
+            from OneTimeToken token
+            where token.user.id = :userId
+              and token.purpose = :purpose
+              and token.consumedAt is null
+              and token.invalidatedAt is null
+            """)
+    Optional<UUID> findActiveTokenId(
+            @Param("userId") UUID userId,
+            @Param("purpose") TokenPurpose purpose);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select token
