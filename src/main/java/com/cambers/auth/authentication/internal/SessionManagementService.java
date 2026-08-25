@@ -1,5 +1,6 @@
-package com.cambers.auth.service;
+package com.cambers.auth.authentication.internal;
 
+import com.cambers.auth.authentication.SessionManagement;
 import com.cambers.auth.dto.AuthSessionResponse;
 import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.SessionRevocationReason;
@@ -18,14 +19,14 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class SessionManagementService {
+class SessionManagementService implements SessionManagement {
 
     private final AuthSessionRepository authSessionRepository;
     private final SessionRevocationService sessionRevocationService;
     private final SecurityAuditPublisher auditPublisher;
     private final Clock clock;
 
-    public SessionManagementService(
+    SessionManagementService(
             AuthSessionRepository authSessionRepository,
             SessionRevocationService sessionRevocationService,
             SecurityAuditPublisher auditPublisher,
@@ -36,6 +37,7 @@ public class SessionManagementService {
         this.clock = clock;
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<AuthSessionResponse> listActiveSessions(UUID userId, UUID currentSessionId) {
         Instant now = clock.instant();
@@ -45,16 +47,19 @@ public class SessionManagementService {
                 .toList();
     }
 
+    @Override
     public void logoutCurrent(UUID userId, UUID sessionId) {
         sessionRevocationService.revokeOwnedSession(userId, sessionId, SessionRevocationReason.LOGOUT);
         auditRevocation(userId, sessionId, SecurityAuditReason.LOGOUT);
     }
 
+    @Override
     public void revokeSession(UUID userId, UUID sessionId) {
         sessionRevocationService.revokeOwnedSession(userId, sessionId, SessionRevocationReason.MANUAL_REVOCATION);
         auditRevocation(userId, sessionId, SecurityAuditReason.MANUAL_REVOCATION);
     }
 
+    @Override
     public void logoutAll(UUID userId) {
         sessionRevocationService.revokeAllForUser(userId, SessionRevocationReason.LOGOUT_ALL);
         auditRevocation(userId, null, SecurityAuditReason.LOGOUT_ALL);

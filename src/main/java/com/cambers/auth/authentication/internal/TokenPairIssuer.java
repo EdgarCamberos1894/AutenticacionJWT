@@ -1,4 +1,4 @@
-package com.cambers.auth.service;
+package com.cambers.auth.authentication.internal;
 
 import com.cambers.auth.config.properties.SessionProperties;
 import com.cambers.auth.dto.TokenPairResponse;
@@ -18,7 +18,7 @@ import java.time.Clock;
 import java.time.Instant;
 
 @Component
-public class TokenPairIssuer {
+class TokenPairIssuer {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenGenerator refreshTokenGenerator;
@@ -26,7 +26,7 @@ public class TokenPairIssuer {
     private final SessionProperties sessionProperties;
     private final Clock clock;
 
-    public TokenPairIssuer(
+    TokenPairIssuer(
             RefreshTokenRepository refreshTokenRepository,
             RefreshTokenGenerator refreshTokenGenerator,
             JwtTokenService jwtTokenService,
@@ -40,7 +40,7 @@ public class TokenPairIssuer {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public TokenPairResponse issue(User user, AuthSession session, RefreshToken parentToken) {
+    TokenPairResponse issue(User user, AuthSession session, RefreshToken parentToken) {
         Instant now = clock.instant();
         Instant refreshExpiresAt = now.plus(sessionProperties.refreshTokenTtl());
         if (refreshExpiresAt.isAfter(session.getExpiresAt())) {

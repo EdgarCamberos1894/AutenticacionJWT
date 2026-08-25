@@ -1,4 +1,4 @@
-package com.cambers.auth.service;
+package com.cambers.auth.authentication.internal;
 
 import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.SessionRevocationReason;
@@ -13,13 +13,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Service
-public class SessionRevocationService {
+class SessionRevocationService {
 
     private final AuthSessionRepository authSessionRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final Clock clock;
 
-    public SessionRevocationService(
+    SessionRevocationService(
             AuthSessionRepository authSessionRepository,
             RefreshTokenRepository refreshTokenRepository,
             Clock clock) {
@@ -29,21 +29,21 @@ public class SessionRevocationService {
     }
 
     @Transactional
-    public void revokeOwnedSession(UUID userId, UUID sessionId, SessionRevocationReason reason) {
+    void revokeOwnedSession(UUID userId, UUID sessionId, SessionRevocationReason reason) {
         AuthSession session = authSessionRepository.findByIdAndUserIdForUpdate(sessionId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found."));
         revokeSessionAndRefreshTokens(session, reason);
     }
 
     @Transactional
-    public void revokeAllForUser(UUID userId, SessionRevocationReason reason) {
+    void revokeAllForUser(UUID userId, SessionRevocationReason reason) {
         Instant now = clock.instant();
         refreshTokenRepository.revokeAllByUserId(userId, now);
         authSessionRepository.revokeAllActiveByUserId(userId, now, reason);
     }
 
     @Transactional
-    public void revokeCompromisedSession(UUID sessionId) {
+    void revokeCompromisedSession(UUID sessionId) {
         AuthSession session = authSessionRepository.findByIdForUpdate(sessionId).orElse(null);
         if (session == null) {
             return;

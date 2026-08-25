@@ -30,6 +30,7 @@ class ModularArchitectureTests {
 
             assertThat(identifiers).containsExactlyInAnyOrder(
                     "account",
+                    "authentication",
                     "delivery",
                     "observability",
                     "abuse"

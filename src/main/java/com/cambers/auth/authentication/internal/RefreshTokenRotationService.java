@@ -1,4 +1,4 @@
-package com.cambers.auth.service;
+package com.cambers.auth.authentication.internal;
 
 import com.cambers.auth.dto.TokenPairResponse;
 import com.cambers.auth.entity.AuthSession;
@@ -15,14 +15,14 @@ import java.time.Clock;
 import java.time.Instant;
 
 @Service
-public class RefreshTokenRotationService {
+class RefreshTokenRotationService {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenGenerator refreshTokenGenerator;
     private final TokenPairIssuer tokenPairIssuer;
     private final Clock clock;
 
-    public RefreshTokenRotationService(
+    RefreshTokenRotationService(
             RefreshTokenRepository refreshTokenRepository,
             RefreshTokenGenerator refreshTokenGenerator,
             TokenPairIssuer tokenPairIssuer,
@@ -34,7 +34,7 @@ public class RefreshTokenRotationService {
     }
 
     @Transactional
-    public TokenPairResponse rotate(String rawRefreshToken) {
+    TokenPairResponse rotate(String rawRefreshToken) {
         String tokenHash = refreshTokenGenerator.hash(rawRefreshToken);
         RefreshToken refreshToken = refreshTokenRepository.findByTokenHashForUpdate(tokenHash)
                 .orElseThrow(this::invalidRefreshToken);

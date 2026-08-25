@@ -1,5 +1,6 @@
 package com.cambers.auth.account.internal;
 
+import com.cambers.auth.account.EmailNormalizer;
 import com.cambers.auth.account.EmailVerification;
 import com.cambers.auth.config.properties.OneTimeTokenProperties;
 import com.cambers.auth.email.AuthenticationEmailDelivery;
@@ -18,7 +19,6 @@ import com.cambers.auth.repository.OneTimeTokenRepository;
 import com.cambers.auth.repository.UserRepository;
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
 import com.cambers.auth.security.token.SecureOpaqueTokenGenerator;
-import com.cambers.auth.service.EmailNormalizer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

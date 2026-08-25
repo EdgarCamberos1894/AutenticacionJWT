@@ -1,5 +1,7 @@
-package com.cambers.auth.service;
+package com.cambers.auth.authentication.internal;
 
+import com.cambers.auth.account.EmailNormalizer;
+import com.cambers.auth.authentication.AuthenticationClientMetadata;
 import com.cambers.auth.config.properties.SessionProperties;
 import com.cambers.auth.dto.LoginRequest;
 import com.cambers.auth.dto.TokenPairResponse;
@@ -23,7 +25,7 @@ import java.time.Clock;
 import java.time.Instant;
 
 @Service
-public class LoginService {
+class LoginService {
 
     private final UserRepository userRepository;
     private final AuthSessionRepository authSessionRepository;
@@ -36,7 +38,7 @@ public class LoginService {
     private final Clock clock;
     private final String dummyPasswordHash;
 
-    public LoginService(
+    LoginService(
             UserRepository userRepository,
             AuthSessionRepository authSessionRepository,
             PasswordEncoder passwordEncoder,
@@ -59,7 +61,7 @@ public class LoginService {
     }
 
     @Transactional
-    public TokenPairResponse login(LoginRequest request, SessionClientMetadata clientMetadata) {
+    TokenPairResponse login(LoginRequest request, AuthenticationClientMetadata clientMetadata) {
         String normalizedEmail = emailNormalizer.normalize(request.email());
         loginRateLimitService.checkAccount(normalizedEmail);
 

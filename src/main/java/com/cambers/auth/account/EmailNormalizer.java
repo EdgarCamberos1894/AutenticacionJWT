@@ -1,4 +1,4 @@
-package com.cambers.auth.service;
+package com.cambers.auth.account;
 
 import org.springframework.stereotype.Component;
 

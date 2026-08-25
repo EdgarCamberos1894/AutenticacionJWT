@@ -1,11 +1,11 @@
-package com.cambers.auth.service;
+package com.cambers.auth.authentication;
 
-public record SessionClientMetadata(String userAgent, String ipAddress) {
+public record AuthenticationClientMetadata(String userAgent, String ipAddress) {
 
     private static final int MAX_USER_AGENT_LENGTH = 512;
     private static final int MAX_IP_ADDRESS_LENGTH = 45;
 
-    public SessionClientMetadata {
+    public AuthenticationClientMetadata {
         userAgent = normalize(userAgent, MAX_USER_AGENT_LENGTH);
         ipAddress = normalize(ipAddress, MAX_IP_ADDRESS_LENGTH);
     }

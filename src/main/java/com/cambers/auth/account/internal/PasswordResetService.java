@@ -1,5 +1,6 @@
 package com.cambers.auth.account.internal;
 
+import com.cambers.auth.account.EmailNormalizer;
 import com.cambers.auth.account.PasswordRecovery;
 import com.cambers.auth.account.PasswordResetCompleted;
 import com.cambers.auth.config.properties.OneTimeTokenProperties;
@@ -18,7 +19,6 @@ import com.cambers.auth.repository.OneTimeTokenRepository;
 import com.cambers.auth.repository.UserRepository;
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
 import com.cambers.auth.security.token.SecureOpaqueTokenGenerator;
-import com.cambers.auth.service.EmailNormalizer;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -111,9 +111,6 @@ public class PasswordResetService implements PasswordRecovery {
                 now
         );
         user.changePasswordHash(passwordEncoder.encode(newPassword), now);
-
-        // Published synchronously. Authentication's listener joins this transaction, so
-        // password replacement and session-family revocation commit or roll back together.
         eventPublisher.publishEvent(new PasswordResetCompleted(userId));
 
         auditPublisher.afterCommit(SecurityAuditEvent.of(

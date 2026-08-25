@@ -1,5 +1,7 @@
-package com.cambers.auth.service;
+package com.cambers.auth.authentication.internal;
 
+import com.cambers.auth.authentication.AuthenticationClientMetadata;
+import com.cambers.auth.authentication.SessionAuthentication;
 import com.cambers.auth.dto.LoginRequest;
 import com.cambers.auth.dto.RefreshTokenRequest;
 import com.cambers.auth.dto.TokenPairResponse;
@@ -13,14 +15,14 @@ import com.cambers.auth.observability.SecurityAuditReason;
 import org.springframework.stereotype.Service;
 
 @Service
-public class AuthenticationFacade {
+class AuthenticationService implements SessionAuthentication {
 
     private final LoginService loginService;
     private final RefreshTokenRotationService refreshTokenRotationService;
     private final SessionRevocationService sessionRevocationService;
     private final SecurityAuditPublisher auditPublisher;
 
-    public AuthenticationFacade(
+    AuthenticationService(
             LoginService loginService,
             RefreshTokenRotationService refreshTokenRotationService,
             SessionRevocationService sessionRevocationService,
@@ -31,10 +33,12 @@ public class AuthenticationFacade {
         this.auditPublisher = auditPublisher;
     }
 
-    public TokenPairResponse login(LoginRequest request, SessionClientMetadata clientMetadata) {
+    @Override
+    public TokenPairResponse login(LoginRequest request, AuthenticationClientMetadata clientMetadata) {
         return loginService.login(request, clientMetadata);
     }
 
+    @Override
     public TokenPairResponse refresh(RefreshTokenRequest request) {
         try {
             TokenPairResponse response = refreshTokenRotationService.rotate(request.refreshToken());
