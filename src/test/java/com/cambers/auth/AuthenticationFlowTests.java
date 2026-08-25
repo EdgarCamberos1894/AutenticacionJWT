@@ -7,7 +7,7 @@ import com.cambers.auth.authentication.internal.model.AuthSession;
 import com.cambers.auth.authentication.internal.model.SessionRevocationReason;
 import com.cambers.auth.authentication.internal.persistence.AuthSessionRepository;
 import com.cambers.auth.authentication.internal.persistence.RefreshTokenRepository;
-import com.cambers.auth.security.refresh.RefreshTokenGenerator;
+import com.cambers.auth.authentication.internal.token.RefreshTokenGenerator;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,26 +54,13 @@ class AuthenticationFlowTests {
     @ServiceConnection
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private AuthSessionRepository authSessionRepository;
-
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private RefreshTokenGenerator refreshTokenGenerator;
-
-    @Autowired
-    private JwtDecoder jwtDecoder;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private UserRepository userRepository;
+    @Autowired private AuthSessionRepository authSessionRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private RefreshTokenGenerator refreshTokenGenerator;
+    @Autowired private JwtDecoder jwtDecoder;
 
     @BeforeEach
     void cleanDatabase() {
@@ -85,9 +72,7 @@ class AuthenticationFlowTests {
     @Test
     void loginIssuesBearerTokensAndStoresOnlyTheRefreshTokenHash() throws Exception {
         User user = createUser(EMAIL);
-
         MvcResult result = performLogin(EMAIL, PASSWORD);
-
         String body = result.getResponse().getContentAsString();
         String rawRefreshToken = JsonPath.read(body, "$.refreshToken");
         String accessToken = JsonPath.read(body, "$.accessToken");
@@ -109,14 +94,11 @@ class AuthenticationFlowTests {
         Instant now = Instant.now();
         String legacyBcryptHash = new BCryptPasswordEncoder(12).encode(PASSWORD);
         assertThat(legacyBcryptHash).startsWith("$2");
-
         User user = new User(EMAIL, legacyBcryptHash, now);
         user.verifyEmail(now);
         user.assignRole(RoleName.USER, now);
         userRepository.saveAndFlush(user);
-
         performLogin(EMAIL, PASSWORD);
-
         User upgradedUser = userRepository.findById(user.getId()).orElseThrow();
         assertThat(upgradedUser.getPasswordHash()).startsWith("{argon2id}");
         assertThat(passwordEncoder.matches(PASSWORD, upgradedUser.getPasswordHash())).isTrue();
@@ -125,7 +107,6 @@ class AuthenticationFlowTests {
     @Test
     void wrongPasswordAndUnknownAccountUseTheSameAuthenticationProblem() throws Exception {
         createUser(EMAIL);
-
         assertInvalidCredentials(EMAIL, "definitely-the-wrong-password");
         assertInvalidCredentials("unknown@example.com", PASSWORD);
     }
@@ -133,28 +114,20 @@ class AuthenticationFlowTests {
     @Test
     void refreshRotationDetectsReplayAndPermanentlyRevokesTheSession() throws Exception {
         createUser(EMAIL);
-
         MvcResult loginResult = performLogin(EMAIL, PASSWORD);
         String loginBody = loginResult.getResponse().getContentAsString();
         String firstRefreshToken = JsonPath.read(loginBody, "$.refreshToken");
         UUID sessionId = UUID.fromString(JsonPath.read(loginBody, "$.sessionId"));
-
         MvcResult refreshResult = performRefresh(firstRefreshToken);
-        String secondRefreshToken = JsonPath.read(
-                refreshResult.getResponse().getContentAsString(),
-                "$.refreshToken"
-        );
+        String secondRefreshToken = JsonPath.read(refreshResult.getResponse().getContentAsString(), "$.refreshToken");
         assertThat(secondRefreshToken).isNotEqualTo(firstRefreshToken);
         assertThat(refreshTokenRepository.findAll()).hasSize(2);
         assertThat(refreshTokenRepository.findAll().stream().filter(token -> token.isUsed()).count()).isEqualTo(1);
-
         assertInvalidRefresh(firstRefreshToken);
-
         AuthSession revokedSession = authSessionRepository.findById(sessionId).orElseThrow();
         assertThat(revokedSession.isRevoked()).isTrue();
         assertThat(revokedSession.getRevocationReason()).isEqualTo(SessionRevocationReason.REFRESH_TOKEN_REUSE);
         assertThat(refreshTokenRepository.findAll()).allSatisfy(token -> assertThat(token.isRevoked()).isTrue());
-
         assertInvalidRefresh(secondRefreshToken);
     }
 
@@ -166,19 +139,12 @@ class AuthenticationFlowTests {
         String accessToken = JsonPath.read(body, "$.accessToken");
         String refreshToken = JsonPath.read(body, "$.refreshToken");
         UUID sessionId = UUID.fromString(JsonPath.read(body, "$.sessionId"));
-
-        mockMvc.perform(post("/api/v1/auth/logout")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
-                .andExpect(status().isNoContent())
-                .andExpect(content().string(""));
-
+        mockMvc.perform(post("/api/v1/auth/logout").header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
+                .andExpect(status().isNoContent()).andExpect(content().string(""));
         assertThat(authSessionRepository.findById(sessionId).orElseThrow().isRevoked()).isTrue();
         assertInvalidRefresh(refreshToken);
-
-        mockMvc.perform(get("/api/v1/auth/sessions")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+        mockMvc.perform(get("/api/v1/auth/sessions").header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
     }
 
     @Test
@@ -186,30 +152,24 @@ class AuthenticationFlowTests {
         createUser(EMAIL);
         MvcResult firstLogin = performLogin(EMAIL, PASSWORD);
         MvcResult secondLogin = performLogin(EMAIL, PASSWORD);
-
         String firstBody = firstLogin.getResponse().getContentAsString();
         String secondBody = secondLogin.getResponse().getContentAsString();
         String firstAccessToken = JsonPath.read(firstBody, "$.accessToken");
         UUID firstSessionId = UUID.fromString(JsonPath.read(firstBody, "$.sessionId"));
         UUID secondSessionId = UUID.fromString(JsonPath.read(secondBody, "$.sessionId"));
         String secondRefreshToken = JsonPath.read(secondBody, "$.refreshToken");
-
         MvcResult sessionsResult = mockMvc.perform(get("/api/v1/auth/sessions")
                         .header(HttpHeaders.AUTHORIZATION, bearer(firstAccessToken)))
-                .andExpect(status().isOk())
-                .andReturn();
-
+                .andExpect(status().isOk()).andReturn();
         List<Map<String, Object>> sessions = JsonPath.read(sessionsResult.getResponse().getContentAsString(), "$");
         assertThat(sessions).hasSize(2);
         assertThat(sessions).anySatisfy(session -> {
             assertThat(session.get("sessionId")).isEqualTo(firstSessionId.toString());
             assertThat(session.get("current")).isEqualTo(true);
         });
-
         mockMvc.perform(delete("/api/v1/auth/sessions/{sessionId}", secondSessionId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(firstAccessToken)))
                 .andExpect(status().isNoContent());
-
         assertInvalidRefresh(secondRefreshToken);
         assertThat(authSessionRepository.findById(secondSessionId).orElseThrow().isRevoked()).isTrue();
     }
@@ -218,18 +178,15 @@ class AuthenticationFlowTests {
     void aUserCannotRevokeAnotherUsersSession() throws Exception {
         createUser(EMAIL);
         createUser(SECOND_EMAIL);
-
         MvcResult firstLogin = performLogin(EMAIL, PASSWORD);
         MvcResult secondLogin = performLogin(SECOND_EMAIL, PASSWORD);
         String firstAccessToken = JsonPath.read(firstLogin.getResponse().getContentAsString(), "$.accessToken");
         UUID secondSessionId = UUID.fromString(JsonPath.read(secondLogin.getResponse().getContentAsString(), "$.sessionId"));
-
         mockMvc.perform(delete("/api/v1/auth/sessions/{sessionId}", secondSessionId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(firstAccessToken)))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
-
         assertThat(authSessionRepository.findById(secondSessionId).orElseThrow().isRevoked()).isFalse();
     }
 
@@ -238,17 +195,13 @@ class AuthenticationFlowTests {
         createUser(EMAIL);
         MvcResult firstLogin = performLogin(EMAIL, PASSWORD);
         MvcResult secondLogin = performLogin(EMAIL, PASSWORD);
-
         String firstBody = firstLogin.getResponse().getContentAsString();
         String secondBody = secondLogin.getResponse().getContentAsString();
         String accessToken = JsonPath.read(firstBody, "$.accessToken");
         String firstRefreshToken = JsonPath.read(firstBody, "$.refreshToken");
         String secondRefreshToken = JsonPath.read(secondBody, "$.refreshToken");
-
-        mockMvc.perform(post("/api/v1/auth/logout-all")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
+        mockMvc.perform(post("/api/v1/auth/logout-all").header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
                 .andExpect(status().isNoContent());
-
         assertThat(authSessionRepository.findAll()).allSatisfy(session -> assertThat(session.isRevoked()).isTrue());
         assertThat(refreshTokenRepository.findAll()).allSatisfy(token -> assertThat(token.isRevoked()).isTrue());
         assertInvalidRefresh(firstRefreshToken);
