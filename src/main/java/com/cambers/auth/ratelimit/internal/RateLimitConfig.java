@@ -1,11 +1,7 @@
-package com.cambers.auth.config;
+package com.cambers.auth.ratelimit.internal;
 
-import com.cambers.auth.config.properties.RateLimitProperties;
 import com.cambers.auth.observability.SecurityAuditPublisher;
 import com.cambers.auth.ratelimit.ClientIpResolver;
-import com.cambers.auth.ratelimit.RateLimitInterceptor;
-import com.cambers.auth.ratelimit.RateLimitPolicyResolver;
-import com.cambers.auth.ratelimit.RequestRateLimiter;
 import com.cambers.auth.security.SecurityProblemWriter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
