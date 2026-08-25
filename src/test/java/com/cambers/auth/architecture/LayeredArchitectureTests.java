@@ -35,4 +35,9 @@ class LayeredArchitectureTests {
                     "..ratelimit..",
                     "..email.."
             );
+
+    @ArchTest
+    static final ArchRule email_outbox_must_not_depend_on_resend_adapter = noClasses()
+            .that().resideInAPackage("..email.outbox..")
+            .should().dependOnClassesThat().resideInAPackage("..email.resend..");
 }

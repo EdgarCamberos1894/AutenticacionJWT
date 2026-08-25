@@ -47,26 +47,13 @@ class PasswordResetFlowTests {
     @ServiceConnection
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.6-alpine");
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private AuthSessionRepository authSessionRepository;
-
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
-
-    @Autowired
-    private OneTimeTokenRepository oneTimeTokenRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private SecureOpaqueTokenGenerator opaqueTokenGenerator;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private UserRepository userRepository;
+    @Autowired private AuthSessionRepository authSessionRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
+    @Autowired private OneTimeTokenRepository oneTimeTokenRepository;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private SecureOpaqueTokenGenerator opaqueTokenGenerator;
 
     @BeforeEach
     void cleanDatabase() {
@@ -83,13 +70,13 @@ class PasswordResetFlowTests {
         mockMvc.perform(post("/api/v1/auth/password-reset")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(emailBody(EMAIL)))
-                .andExpect(status().isNoContent())
+                .andExpect(status().isAccepted())
                 .andExpect(content().string(""));
 
         mockMvc.perform(post("/api/v1/auth/password-reset")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(emailBody("unknown@example.com")))
-                .andExpect(status().isNoContent())
+                .andExpect(status().isAccepted())
                 .andExpect(content().string(""));
 
         assertThat(oneTimeTokenRepository.findAll()).singleElement().satisfies(token -> {

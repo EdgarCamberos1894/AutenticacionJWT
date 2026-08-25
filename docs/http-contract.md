@@ -10,7 +10,8 @@ Responses are not wrapped in a universal `success/message/data` envelope.
 | --- | ---: | --- |
 | Read resource or successful login/refresh | `200 OK` | Resource/action DTO |
 | Create resource | `201 Created` | Resource DTO when useful |
-| Successful command with no representation | `204 No Content` | No response body |
+| Durable workflow accepted for deferred processing | `202 Accepted` | No response body unless a workflow resource is exposed |
+| Successful immediate command with no representation | `204 No Content` | No response body |
 
 Login and refresh responses include `Cache-Control: no-store` and `Pragma: no-cache` because they contain bearer credentials.
 
@@ -21,18 +22,30 @@ Login and refresh responses include `Cache-Control: no-store` and `Pragma: no-ca
 | `POST` | `/api/v1/auth/register` | `201 Created` | Public |
 | `POST` | `/api/v1/auth/login` | `200 OK` | Public |
 | `POST` | `/api/v1/auth/refresh` | `200 OK` | Public; refresh token in request body |
-| `POST` | `/api/v1/auth/email-verification` | `204 No Content` | Public |
+| `POST` | `/api/v1/auth/email-verification` | `202 Accepted` | Public |
 | `POST` | `/api/v1/auth/email-verification/confirm` | `204 No Content` | Public |
-| `POST` | `/api/v1/auth/password-reset` | `204 No Content` | Public |
+| `POST` | `/api/v1/auth/password-reset` | `202 Accepted` | Public |
 | `POST` | `/api/v1/auth/password-reset/confirm` | `204 No Content` | Public |
 | `POST` | `/api/v1/auth/logout` | `204 No Content` | Bearer access token |
 | `POST` | `/api/v1/auth/logout-all` | `204 No Content` | Bearer access token |
 | `GET` | `/api/v1/auth/sessions` | `200 OK` | Bearer access token |
 | `DELETE` | `/api/v1/auth/sessions/{sessionId}` | `204 No Content` | Bearer access token |
 
-Email-verification resend and password-reset request use the same outward-facing `204` response whether or not the supplied account can perform the requested flow. Clients must not infer account existence from those responses.
+Email-verification resend and password-reset request use the same outward-facing `202` response whether or not the supplied account can perform the requested flow. `202` means the request has been accepted for the applicable durable workflow; clients must not infer that an account exists or that Resend has already delivered an email.
+
+Registration remains `201` because the account resource and its one-time-token/outbox intent are committed before the response.
 
 Session revocation is ownership-scoped by the authenticated user. Attempting to address another user's session does not expose or mutate that session.
+
+## Provider callback
+
+| Method | Endpoint | Success | Authentication |
+| --- | --- | ---: | --- |
+| `POST` | `/api/v1/webhooks/resend` | `204 No Content` | Resend/Svix HMAC signature over raw request body |
+
+The webhook endpoint is intentionally outside bearer-JWT authentication because Resend is the caller. It verifies the provider signature and timestamp before JSON parsing. Invalid/missing/replayed signatures return RFC 9457 `400 Bad Request` with `INVALID_WEBHOOK_SIGNATURE`.
+
+Webhook ids are processed idempotently, so provider retries can receive a successful `204` without applying duplicate state transitions.
 
 ## Client and server errors
 
@@ -40,7 +53,7 @@ Errors use `Content-Type: application/problem+json`.
 
 | Situation | Status |
 | --- | ---: |
-| Malformed JSON / invalid request syntax | `400 Bad Request` |
+| Malformed JSON / invalid request syntax / invalid webhook signature | `400 Bad Request` |
 | Missing or invalid authentication | `401 Unauthorized` |
 | Authenticated but insufficient permission | `403 Forbidden` |
 | Resource not found | `404 Not Found` |
