@@ -1,12 +1,12 @@
 package com.cambers.auth;
 
-import com.cambers.auth.entity.AuthSession;
-import com.cambers.auth.entity.RoleName;
-import com.cambers.auth.entity.SessionRevocationReason;
-import com.cambers.auth.entity.User;
-import com.cambers.auth.repository.AuthSessionRepository;
-import com.cambers.auth.repository.RefreshTokenRepository;
-import com.cambers.auth.repository.UserRepository;
+import com.cambers.auth.account.RoleName;
+import com.cambers.auth.account.internal.model.User;
+import com.cambers.auth.account.internal.persistence.UserRepository;
+import com.cambers.auth.authentication.internal.model.AuthSession;
+import com.cambers.auth.authentication.internal.model.SessionRevocationReason;
+import com.cambers.auth.authentication.internal.persistence.AuthSessionRepository;
+import com.cambers.auth.authentication.internal.persistence.RefreshTokenRepository;
 import com.cambers.auth.security.refresh.RefreshTokenGenerator;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
@@ -199,10 +199,7 @@ class AuthenticationFlowTests {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        List<Map<String, Object>> sessions = JsonPath.read(
-                sessionsResult.getResponse().getContentAsString(),
-                "$"
-        );
+        List<Map<String, Object>> sessions = JsonPath.read(sessionsResult.getResponse().getContentAsString(), "$");
         assertThat(sessions).hasSize(2);
         assertThat(sessions).anySatisfy(session -> {
             assertThat(session.get("sessionId")).isEqualTo(firstSessionId.toString());
@@ -225,9 +222,7 @@ class AuthenticationFlowTests {
         MvcResult firstLogin = performLogin(EMAIL, PASSWORD);
         MvcResult secondLogin = performLogin(SECOND_EMAIL, PASSWORD);
         String firstAccessToken = JsonPath.read(firstLogin.getResponse().getContentAsString(), "$.accessToken");
-        UUID secondSessionId = UUID.fromString(
-                JsonPath.read(secondLogin.getResponse().getContentAsString(), "$.sessionId")
-        );
+        UUID secondSessionId = UUID.fromString(JsonPath.read(secondLogin.getResponse().getContentAsString(), "$.sessionId"));
 
         mockMvc.perform(delete("/api/v1/auth/sessions/{sessionId}", secondSessionId)
                         .header(HttpHeaders.AUTHORIZATION, bearer(firstAccessToken)))
@@ -322,19 +317,11 @@ class AuthenticationFlowTests {
                 .andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
     }
 
-    private String bearer(String accessToken) {
-        return "Bearer " + accessToken;
-    }
-
-    private String loginBody(String email, String password) {
-        return """
-                {"email":"%s","password":"%s"}
-                """.formatted(email, password);
-    }
-
-    private String refreshBody(String refreshToken) {
-        return """
-                {"refreshToken":"%s"}
-                """.formatted(refreshToken);
-    }
+    private String bearer(String accessToken) { return "Bearer " + accessToken; }
+    private String loginBody(String email, String password) { return """
+            {"email":"%s","password":"%s"}
+            """.formatted(email, password); }
+    private String refreshBody(String refreshToken) { return """
+            {"refreshToken":"%s"}
+            """.formatted(refreshToken); }
 }
