@@ -12,7 +12,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -34,16 +36,16 @@ class EmailOutboxWorkerTests {
                 .thenReturn(Optional.empty());
         when(crypto.decrypt(message)).thenReturn(email);
         when(sender.send(email)).thenReturn(new EmailDeliveryReceipt("provider-123"));
-        when(processingService.markAccepted(message.id(), anyString(), "provider-123"))
+        when(processingService.markAccepted(eq(message.id()), anyString(), eq("provider-123")))
                 .thenThrow(new IllegalStateException("database unavailable"));
 
         worker.drain();
 
         verify(processingService, never()).markFailure(
-                org.mockito.ArgumentMatchers.eq(message.id()),
+                eq(message.id()),
                 anyString(),
-                org.mockito.ArgumentMatchers.anyBoolean(),
-                org.mockito.ArgumentMatchers.anyString()
+                anyBoolean(),
+                anyString()
         );
         verify(processingService, never()).reconcileProviderDeliveryStatus(message.id(), "provider-123");
     }
@@ -62,7 +64,7 @@ class EmailOutboxWorkerTests {
                 .thenReturn(Optional.empty());
         when(crypto.decrypt(message)).thenReturn(email);
         when(sender.send(email)).thenReturn(new EmailDeliveryReceipt("provider-123"));
-        when(processingService.markAccepted(message.id(), anyString(), "provider-123")).thenReturn(true);
+        when(processingService.markAccepted(eq(message.id()), anyString(), eq("provider-123"))).thenReturn(true);
         org.mockito.Mockito.doThrow(new IllegalStateException("temporary reconciliation failure"))
                 .when(processingService)
                 .reconcileProviderDeliveryStatus(message.id(), "provider-123");
@@ -70,10 +72,10 @@ class EmailOutboxWorkerTests {
         worker.drain();
 
         verify(processingService, never()).markFailure(
-                org.mockito.ArgumentMatchers.eq(message.id()),
+                eq(message.id()),
                 anyString(),
-                org.mockito.ArgumentMatchers.anyBoolean(),
-                org.mockito.ArgumentMatchers.anyString()
+                anyBoolean(),
+                anyString()
         );
     }
 
