@@ -1,4 +1,4 @@
-package com.cambers.auth.ratelimit;
+package com.cambers.auth.ratelimit.internal;
 
 import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.observability.SecurityAuditAction;
@@ -6,6 +6,8 @@ import com.cambers.auth.observability.SecurityAuditEvent;
 import com.cambers.auth.observability.SecurityAuditOutcome;
 import com.cambers.auth.observability.SecurityAuditPublisher;
 import com.cambers.auth.observability.SecurityAuditReason;
+import com.cambers.auth.ratelimit.ClientIpResolver;
+import com.cambers.auth.ratelimit.RateLimitBackendUnavailableException;
 import com.cambers.auth.security.SecurityProblemWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,7 +18,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-public class RateLimitInterceptor implements HandlerInterceptor {
+class RateLimitInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitInterceptor.class);
 
@@ -26,7 +28,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private final SecurityProblemWriter problemWriter;
     private final SecurityAuditPublisher auditPublisher;
 
-    public RateLimitInterceptor(
+    RateLimitInterceptor(
             RateLimitPolicyResolver policyResolver,
             RequestRateLimiter requestRateLimiter,
             ClientIpResolver clientIpResolver,

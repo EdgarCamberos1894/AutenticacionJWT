@@ -1,4 +1,4 @@
-package com.cambers.auth.config.properties;
+package com.cambers.auth.ratelimit.internal;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
