@@ -1,7 +1,7 @@
 package com.cambers.auth.service;
 
 import com.cambers.auth.config.properties.OneTimeTokenProperties;
-import com.cambers.auth.email.VerificationTokenIssuedEvent;
+import com.cambers.auth.email.outbox.EmailOutboxService;
 import com.cambers.auth.entity.AccountStatus;
 import com.cambers.auth.entity.OneTimeToken;
 import com.cambers.auth.entity.TokenPurpose;
@@ -12,7 +12,6 @@ import com.cambers.auth.repository.OneTimeTokenRepository;
 import com.cambers.auth.repository.UserRepository;
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
 import com.cambers.auth.security.token.SecureOpaqueTokenGenerator;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +27,7 @@ public class EmailVerificationService {
     private final UserRepository userRepository;
     private final SecureOpaqueTokenGenerator tokenGenerator;
     private final OneTimeTokenProperties properties;
-    private final ApplicationEventPublisher eventPublisher;
+    private final EmailOutboxService emailOutboxService;
     private final EmailNormalizer emailNormalizer;
     private final Clock clock;
 
@@ -37,14 +36,14 @@ public class EmailVerificationService {
             UserRepository userRepository,
             SecureOpaqueTokenGenerator tokenGenerator,
             OneTimeTokenProperties properties,
-            ApplicationEventPublisher eventPublisher,
+            EmailOutboxService emailOutboxService,
             EmailNormalizer emailNormalizer,
             Clock clock) {
         this.oneTimeTokenRepository = oneTimeTokenRepository;
         this.userRepository = userRepository;
         this.tokenGenerator = tokenGenerator;
         this.properties = properties;
-        this.eventPublisher = eventPublisher;
+        this.emailOutboxService = emailOutboxService;
         this.emailNormalizer = emailNormalizer;
         this.clock = clock;
     }
@@ -113,12 +112,13 @@ public class EmailVerificationService {
         ));
         UUID issuanceId = Objects.requireNonNull(token.getId(), "Persisted verification token must have an id");
 
-        eventPublisher.publishEvent(new VerificationTokenIssuedEvent(
+        emailOutboxService.enqueueVerification(
                 issuanceId,
                 user.getEmail(),
                 generatedToken.value(),
-                expiresAt
-        ));
+                expiresAt,
+                now
+        );
     }
 
     private BadRequestException invalidVerificationToken() {
