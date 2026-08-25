@@ -2,6 +2,7 @@ package com.cambers.auth.authentication.internal;
 
 import com.cambers.auth.account.AuthenticatedAccount;
 import com.cambers.auth.authentication.TokenPairResponse;
+import com.cambers.auth.authentication.internal.config.SessionProperties;
 import com.cambers.auth.authentication.internal.model.AuthSession;
 import com.cambers.auth.authentication.internal.model.RefreshToken;
 import com.cambers.auth.authentication.internal.persistence.RefreshTokenRepository;
@@ -9,7 +10,6 @@ import com.cambers.auth.authentication.internal.token.GeneratedRefreshToken;
 import com.cambers.auth.authentication.internal.token.IssuedAccessToken;
 import com.cambers.auth.authentication.internal.token.JwtTokenService;
 import com.cambers.auth.authentication.internal.token.RefreshTokenGenerator;
-import com.cambers.auth.config.properties.SessionProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;

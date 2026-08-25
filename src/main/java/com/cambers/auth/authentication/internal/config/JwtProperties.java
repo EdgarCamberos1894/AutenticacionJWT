@@ -1,4 +1,4 @@
-package com.cambers.auth.config.properties;
+package com.cambers.auth.authentication.internal.config;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;

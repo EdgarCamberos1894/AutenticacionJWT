@@ -1,7 +1,7 @@
 package com.cambers.auth.authentication.internal.token;
 
 import com.cambers.auth.account.AuthenticatedAccount;
-import com.cambers.auth.config.properties.JwtProperties;
+import com.cambers.auth.authentication.internal.config.JwtProperties;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;

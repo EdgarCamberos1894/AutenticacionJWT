@@ -1,4 +1,4 @@
-package com.cambers.auth.config;
+package com.cambers.auth.account.internal.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
