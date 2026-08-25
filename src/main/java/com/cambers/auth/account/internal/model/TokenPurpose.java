@@ -1,4 +1,4 @@
-package com.cambers.auth.entity;
+package com.cambers.auth.account.internal.model;
 
 public enum TokenPurpose {
     VERIFY_EMAIL,
