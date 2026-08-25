@@ -95,6 +95,8 @@ public class PasswordResetService {
 
     private void issueResetTokenForLockedUser(User user) {
         Instant now = clock.instant();
+        oneTimeTokenRepository.findActiveTokenId(user.getId(), TokenPurpose.RESET_PASSWORD)
+                .ifPresent(issuanceId -> emailOutboxService.cancelSuperseded(issuanceId, now));
         oneTimeTokenRepository.invalidateActiveTokens(user.getId(), TokenPurpose.RESET_PASSWORD, now);
 
         GeneratedOpaqueToken generatedToken = tokenGenerator.generate();
