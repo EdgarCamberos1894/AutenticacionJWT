@@ -14,6 +14,7 @@ public class SecurityAuditRecorder {
 
     static final String METRIC_NAME = "auth.security.events";
     private static final Logger auditLog = LoggerFactory.getLogger("security.audit");
+    private static final Logger log = LoggerFactory.getLogger(SecurityAuditRecorder.class);
 
     private final MeterRegistry meterRegistry;
     private final Tracer tracer;
@@ -24,30 +25,40 @@ public class SecurityAuditRecorder {
     }
 
     public void record(SecurityAuditEvent event) {
-        incrementMetric(event);
-        enrichCurrentSpan(event);
+        recordMetricBestEffort(event);
+        enrichCurrentSpanBestEffort(event);
         writeStructuredLog(event);
     }
 
-    private void incrementMetric(SecurityAuditEvent event) {
-        Counter.builder(METRIC_NAME)
-                .description("Security-relevant authentication events")
-                .tag("action", event.action().metricValue())
-                .tag("outcome", event.outcome().metricValue())
-                .tag("reason", event.reason().metricValue())
-                .register(meterRegistry)
-                .increment();
+    private void recordMetricBestEffort(SecurityAuditEvent event) {
+        try {
+            Counter.builder(METRIC_NAME)
+                    .description("Security-relevant authentication events")
+                    .tag("action", event.action().metricValue())
+                    .tag("outcome", event.outcome().metricValue())
+                    .tag("reason", event.reason().metricValue())
+                    .register(meterRegistry)
+                    .increment();
+        } catch (RuntimeException exception) {
+            log.error("Could not record security audit metric action={} outcome={}",
+                    event.action().metricValue(), event.outcome().metricValue(), exception);
+        }
     }
 
-    private void enrichCurrentSpan(SecurityAuditEvent event) {
-        Span span = tracer.currentSpan();
-        if (span == null) {
-            return;
+    private void enrichCurrentSpanBestEffort(SecurityAuditEvent event) {
+        try {
+            Span span = tracer.currentSpan();
+            if (span == null) {
+                return;
+            }
+            span.event(event.action().eventName());
+            span.tag("auth.action", event.action().metricValue());
+            span.tag("auth.outcome", event.outcome().metricValue());
+            span.tag("auth.reason", event.reason().metricValue());
+        } catch (RuntimeException exception) {
+            log.error("Could not enrich trace with security audit event action={} outcome={}",
+                    event.action().metricValue(), event.outcome().metricValue(), exception);
         }
-        span.event(event.action().eventName());
-        span.tag("auth.action", event.action().metricValue());
-        span.tag("auth.outcome", event.outcome().metricValue());
-        span.tag("auth.reason", event.reason().metricValue());
     }
 
     private void writeStructuredLog(SecurityAuditEvent event) {

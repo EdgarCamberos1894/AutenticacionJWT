@@ -8,6 +8,11 @@ import com.cambers.auth.entity.TokenPurpose;
 import com.cambers.auth.entity.User;
 import com.cambers.auth.exception.BadRequestException;
 import com.cambers.auth.exception.ProblemCode;
+import com.cambers.auth.observability.SecurityAuditAction;
+import com.cambers.auth.observability.SecurityAuditEvent;
+import com.cambers.auth.observability.SecurityAuditOutcome;
+import com.cambers.auth.observability.SecurityAuditPublisher;
+import com.cambers.auth.observability.SecurityAuditReason;
 import com.cambers.auth.repository.OneTimeTokenRepository;
 import com.cambers.auth.repository.UserRepository;
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
@@ -29,6 +34,7 @@ public class EmailVerificationService {
     private final OneTimeTokenProperties properties;
     private final EmailOutboxService emailOutboxService;
     private final EmailNormalizer emailNormalizer;
+    private final SecurityAuditPublisher auditPublisher;
     private final Clock clock;
 
     public EmailVerificationService(
@@ -38,6 +44,7 @@ public class EmailVerificationService {
             OneTimeTokenProperties properties,
             EmailOutboxService emailOutboxService,
             EmailNormalizer emailNormalizer,
+            SecurityAuditPublisher auditPublisher,
             Clock clock) {
         this.oneTimeTokenRepository = oneTimeTokenRepository;
         this.userRepository = userRepository;
@@ -45,6 +52,7 @@ public class EmailVerificationService {
         this.properties = properties;
         this.emailOutboxService = emailOutboxService;
         this.emailNormalizer = emailNormalizer;
+        this.auditPublisher = auditPublisher;
         this.clock = clock;
     }
 
@@ -62,6 +70,14 @@ public class EmailVerificationService {
                 .filter(user -> !user.isEmailVerified())
                 .filter(user -> user.getStatus() == AccountStatus.PENDING_VERIFICATION)
                 .ifPresent(this::issueVerificationForLockedUser);
+
+        auditPublisher.afterCommit(SecurityAuditEvent.of(
+                SecurityAuditAction.EMAIL_VERIFICATION_REQUEST,
+                SecurityAuditOutcome.ACCEPTED,
+                SecurityAuditReason.NONE,
+                null,
+                null
+        ));
     }
 
     @Transactional
@@ -91,6 +107,13 @@ public class EmailVerificationService {
                 now
         );
         user.verifyEmail(now);
+        auditPublisher.afterCommit(SecurityAuditEvent.of(
+                SecurityAuditAction.EMAIL_VERIFICATION_CONFIRM,
+                SecurityAuditOutcome.SUCCESS,
+                SecurityAuditReason.NONE,
+                userId,
+                null
+        ));
     }
 
     private void issueVerificationForLockedUser(User user) {
@@ -124,6 +147,13 @@ public class EmailVerificationService {
     }
 
     private BadRequestException invalidVerificationToken() {
+        auditPublisher.now(SecurityAuditEvent.of(
+                SecurityAuditAction.EMAIL_VERIFICATION_CONFIRM,
+                SecurityAuditOutcome.FAILURE,
+                SecurityAuditReason.INVALID_VERIFICATION_TOKEN,
+                null,
+                null
+        ));
         return new BadRequestException(
                 ProblemCode.INVALID_VERIFICATION_TOKEN,
                 "The email verification token is invalid or expired."
