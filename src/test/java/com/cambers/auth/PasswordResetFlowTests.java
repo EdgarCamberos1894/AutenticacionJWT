@@ -1,14 +1,14 @@
 package com.cambers.auth;
 
-import com.cambers.auth.entity.OneTimeToken;
-import com.cambers.auth.entity.RoleName;
-import com.cambers.auth.entity.SessionRevocationReason;
-import com.cambers.auth.entity.TokenPurpose;
-import com.cambers.auth.entity.User;
-import com.cambers.auth.repository.AuthSessionRepository;
-import com.cambers.auth.repository.OneTimeTokenRepository;
-import com.cambers.auth.repository.RefreshTokenRepository;
-import com.cambers.auth.repository.UserRepository;
+import com.cambers.auth.account.RoleName;
+import com.cambers.auth.account.internal.model.OneTimeToken;
+import com.cambers.auth.account.internal.model.TokenPurpose;
+import com.cambers.auth.account.internal.model.User;
+import com.cambers.auth.account.internal.persistence.OneTimeTokenRepository;
+import com.cambers.auth.account.internal.persistence.UserRepository;
+import com.cambers.auth.authentication.internal.model.SessionRevocationReason;
+import com.cambers.auth.authentication.internal.persistence.AuthSessionRepository;
+import com.cambers.auth.authentication.internal.persistence.RefreshTokenRepository;
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
 import com.cambers.auth.security.token.SecureOpaqueTokenGenerator;
 import com.jayway.jsonpath.JsonPath;
