@@ -1,6 +1,8 @@
 package com.cambers.auth.email.outbox;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,8 +29,10 @@ public interface EmailOutboxRepository extends JpaRepository<EmailOutboxMessage,
             @Param("now") Instant now,
             @Param("leaseExpiredBefore") Instant leaseExpiredBefore);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select message from EmailOutboxMessage message where message.providerMessageId = :providerMessageId")
-    Optional<EmailOutboxMessage> findByProviderMessageId(@Param("providerMessageId") String providerMessageId);
+    Optional<EmailOutboxMessage> findByProviderMessageIdForUpdate(
+            @Param("providerMessageId") String providerMessageId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
