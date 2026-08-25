@@ -66,6 +66,18 @@ auth:
       reply-to: ${RESEND_REPLY_TO:}
       connect-timeout: ${RESEND_CONNECT_TIMEOUT:PT3S}
       read-timeout: ${RESEND_READ_TIMEOUT:PT5S}
+    outbox:
+      worker-enabled: ${EMAIL_OUTBOX_WORKER_ENABLED:true}
+      active-key-id: ${EMAIL_OUTBOX_ACTIVE_KEY_ID:local-v1}
+      active-key: ${EMAIL_OUTBOX_ACTIVE_KEY:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+      previous-key-id: ${EMAIL_OUTBOX_PREVIOUS_KEY_ID:}
+      previous-key: ${EMAIL_OUTBOX_PREVIOUS_KEY:}
+      poll-interval: ${EMAIL_OUTBOX_POLL_INTERVAL:PT2S}
+      lease-duration: ${EMAIL_OUTBOX_LEASE_DURATION:PT30S}
+      base-backoff: ${EMAIL_OUTBOX_BASE_BACKOFF:PT5S}
+      max-backoff: ${EMAIL_OUTBOX_MAX_BACKOFF:PT5M}
+      batch-size: ${EMAIL_OUTBOX_BATCH_SIZE:20}
+      max-attempts: ${EMAIL_OUTBOX_MAX_ATTEMPTS:8}
   email-verification:
     public-url: ${VERIFICATION_PUBLIC_URL:http://localhost:3000/verify-email}
   password-reset:
