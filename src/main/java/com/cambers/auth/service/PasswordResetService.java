@@ -1,7 +1,7 @@
 package com.cambers.auth.service;
 
 import com.cambers.auth.config.properties.OneTimeTokenProperties;
-import com.cambers.auth.email.PasswordResetTokenIssuedEvent;
+import com.cambers.auth.email.outbox.EmailOutboxService;
 import com.cambers.auth.entity.OneTimeToken;
 import com.cambers.auth.entity.SessionRevocationReason;
 import com.cambers.auth.entity.TokenPurpose;
@@ -12,7 +12,6 @@ import com.cambers.auth.repository.OneTimeTokenRepository;
 import com.cambers.auth.repository.UserRepository;
 import com.cambers.auth.security.token.GeneratedOpaqueToken;
 import com.cambers.auth.security.token.SecureOpaqueTokenGenerator;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +30,7 @@ public class PasswordResetService {
     private final OneTimeTokenProperties properties;
     private final PasswordEncoder passwordEncoder;
     private final SessionRevocationService sessionRevocationService;
-    private final ApplicationEventPublisher eventPublisher;
+    private final EmailOutboxService emailOutboxService;
     private final EmailNormalizer emailNormalizer;
     private final Clock clock;
 
@@ -42,7 +41,7 @@ public class PasswordResetService {
             OneTimeTokenProperties properties,
             PasswordEncoder passwordEncoder,
             SessionRevocationService sessionRevocationService,
-            ApplicationEventPublisher eventPublisher,
+            EmailOutboxService emailOutboxService,
             EmailNormalizer emailNormalizer,
             Clock clock) {
         this.oneTimeTokenRepository = oneTimeTokenRepository;
@@ -51,7 +50,7 @@ public class PasswordResetService {
         this.properties = properties;
         this.passwordEncoder = passwordEncoder;
         this.sessionRevocationService = sessionRevocationService;
-        this.eventPublisher = eventPublisher;
+        this.emailOutboxService = emailOutboxService;
         this.emailNormalizer = emailNormalizer;
         this.clock = clock;
     }
@@ -109,12 +108,13 @@ public class PasswordResetService {
         ));
         UUID issuanceId = Objects.requireNonNull(token.getId(), "Persisted password-reset token must have an id");
 
-        eventPublisher.publishEvent(new PasswordResetTokenIssuedEvent(
+        emailOutboxService.enqueuePasswordReset(
                 issuanceId,
                 user.getEmail(),
                 generatedToken.value(),
-                expiresAt
-        ));
+                expiresAt,
+                now
+        );
     }
 
     private BadRequestException invalidResetToken() {
