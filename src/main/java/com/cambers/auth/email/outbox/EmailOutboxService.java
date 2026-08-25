@@ -57,6 +57,13 @@ public class EmailOutboxService {
         );
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void cancelSuperseded(UUID issuanceId, Instant now) {
+        repository.findByIdForUpdate(issuanceId)
+                .filter(EmailOutboxMessage::isCancellable)
+                .ifPresent(message -> message.cancel("TOKEN_SUPERSEDED", now));
+    }
+
     private void enqueue(
             UUID issuanceId,
             EmailOutboxPurpose purpose,
