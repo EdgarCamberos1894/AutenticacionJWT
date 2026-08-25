@@ -1,9 +1,10 @@
 package com.cambers.auth.service;
 
+import com.cambers.auth.account.AccountAuthentication;
+import com.cambers.auth.account.AuthenticatedAccount;
 import com.cambers.auth.dto.TokenPairResponse;
 import com.cambers.auth.entity.AuthSession;
 import com.cambers.auth.entity.RefreshToken;
-import com.cambers.auth.entity.User;
 import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.exception.UnauthorizedException;
 import com.cambers.auth.repository.RefreshTokenRepository;
@@ -20,16 +21,19 @@ public class RefreshTokenRotationService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenGenerator refreshTokenGenerator;
     private final TokenPairIssuer tokenPairIssuer;
+    private final AccountAuthentication accountAuthentication;
     private final Clock clock;
 
     public RefreshTokenRotationService(
             RefreshTokenRepository refreshTokenRepository,
             RefreshTokenGenerator refreshTokenGenerator,
             TokenPairIssuer tokenPairIssuer,
+            AccountAuthentication accountAuthentication,
             Clock clock) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.refreshTokenGenerator = refreshTokenGenerator;
         this.tokenPairIssuer = tokenPairIssuer;
+        this.accountAuthentication = accountAuthentication;
         this.clock = clock;
     }
 
@@ -57,14 +61,12 @@ public class RefreshTokenRotationService {
             throw invalidRefreshToken();
         }
 
-        User user = session.getUser();
-        if (!user.isAuthenticationAllowed()) {
-            throw invalidRefreshToken();
-        }
+        AuthenticatedAccount account = accountAuthentication.findAuthenticatable(session.getUserId())
+                .orElseThrow(this::invalidRefreshToken);
 
         refreshToken.markUsed(now);
         session.touch(now);
-        return tokenPairIssuer.issue(user, session, refreshToken);
+        return tokenPairIssuer.issue(account.id(), account.roles(), session, refreshToken);
     }
 
     private UnauthorizedException invalidRefreshToken() {
