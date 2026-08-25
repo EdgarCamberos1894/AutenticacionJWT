@@ -4,5 +4,5 @@ import java.util.Optional;
 
 public interface EmailDeliveryStatusLookup {
 
-    Optional<EmailDeliveryStatusUpdate> findLatest(String providerMessageId);
+    Optional<EmailDeliveryStatusUpdate> findEffectiveStatus(String providerMessageId);
 }
