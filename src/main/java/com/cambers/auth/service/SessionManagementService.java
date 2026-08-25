@@ -37,35 +37,35 @@ public class SessionManagementService {
     }
 
     @Transactional(readOnly = true)
-    public List<AuthSessionResponse> listActiveSessions(UUID userId, UUID currentSessionId) {
+    public List<AuthSessionResponse> listActiveSessions(UUID accountId, UUID currentSessionId) {
         Instant now = clock.instant();
-        return authSessionRepository.findActiveByUserId(userId, now)
+        return authSessionRepository.findActiveByAccountId(accountId, now)
                 .stream()
                 .map(session -> toResponse(session, currentSessionId))
                 .toList();
     }
 
-    public void logoutCurrent(UUID userId, UUID sessionId) {
-        sessionRevocationService.revokeOwnedSession(userId, sessionId, SessionRevocationReason.LOGOUT);
-        auditRevocation(userId, sessionId, SecurityAuditReason.LOGOUT);
+    public void logoutCurrent(UUID accountId, UUID sessionId) {
+        sessionRevocationService.revokeOwnedSession(accountId, sessionId, SessionRevocationReason.LOGOUT);
+        auditRevocation(accountId, sessionId, SecurityAuditReason.LOGOUT);
     }
 
-    public void revokeSession(UUID userId, UUID sessionId) {
-        sessionRevocationService.revokeOwnedSession(userId, sessionId, SessionRevocationReason.MANUAL_REVOCATION);
-        auditRevocation(userId, sessionId, SecurityAuditReason.MANUAL_REVOCATION);
+    public void revokeSession(UUID accountId, UUID sessionId) {
+        sessionRevocationService.revokeOwnedSession(accountId, sessionId, SessionRevocationReason.MANUAL_REVOCATION);
+        auditRevocation(accountId, sessionId, SecurityAuditReason.MANUAL_REVOCATION);
     }
 
-    public void logoutAll(UUID userId) {
-        sessionRevocationService.revokeAllForUser(userId, SessionRevocationReason.LOGOUT_ALL);
-        auditRevocation(userId, null, SecurityAuditReason.LOGOUT_ALL);
+    public void logoutAll(UUID accountId) {
+        sessionRevocationService.revokeAllForAccount(accountId, SessionRevocationReason.LOGOUT_ALL);
+        auditRevocation(accountId, null, SecurityAuditReason.LOGOUT_ALL);
     }
 
-    private void auditRevocation(UUID userId, UUID sessionId, SecurityAuditReason reason) {
+    private void auditRevocation(UUID accountId, UUID sessionId, SecurityAuditReason reason) {
         auditPublisher.afterCommit(SecurityAuditEvent.of(
                 SecurityAuditAction.SESSION_REVOCATION,
                 SecurityAuditOutcome.SUCCESS,
                 reason,
-                userId,
+                accountId,
                 sessionId
         ));
     }
