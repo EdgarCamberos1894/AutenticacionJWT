@@ -98,6 +98,10 @@ public class EmailOutboxMessage {
         this.updatedAt = now;
     }
 
+    public boolean isOwnedBy(String workerId) {
+        return status == EmailOutboxStatus.PROCESSING && workerId.equals(lockedBy);
+    }
+
     public void markAccepted(String providerMessageId, Instant now) {
         this.status = EmailOutboxStatus.SENT;
         this.deliveryStatus = EmailDeliveryStatus.ACCEPTED;
