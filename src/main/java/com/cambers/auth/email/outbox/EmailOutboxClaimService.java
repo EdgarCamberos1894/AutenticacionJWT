@@ -1,6 +1,8 @@
 package com.cambers.auth.email.outbox;
 
 import com.cambers.auth.config.properties.EmailOutboxProperties;
+import com.cambers.auth.email.resend.ResendEmailEventMapper;
+import com.cambers.auth.email.resend.ResendWebhookEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -19,14 +21,20 @@ public class EmailOutboxClaimService {
     private static final Logger log = LoggerFactory.getLogger(EmailOutboxClaimService.class);
 
     private final EmailOutboxRepository repository;
+    private final ResendWebhookEventRepository webhookEventRepository;
+    private final ResendEmailEventMapper eventMapper;
     private final EmailOutboxProperties properties;
     private final Clock clock;
 
     public EmailOutboxClaimService(
             EmailOutboxRepository repository,
+            ResendWebhookEventRepository webhookEventRepository,
+            ResendEmailEventMapper eventMapper,
             EmailOutboxProperties properties,
             Clock clock) {
         this.repository = repository;
+        this.webhookEventRepository = webhookEventRepository;
+        this.eventMapper = eventMapper;
         this.properties = properties;
         this.clock = clock;
     }
@@ -54,7 +62,16 @@ public class EmailOutboxClaimService {
             log.warn("Ignoring stale email outbox completion messageId={}", messageId);
             return;
         }
-        message.markAccepted(providerMessageId, clock.instant());
+
+        Instant now = clock.instant();
+        message.markAccepted(providerMessageId, now);
+        webhookEventRepository.findTopByProviderMessageIdOrderByEventCreatedAtDesc(providerMessageId)
+                .ifPresent(event -> eventMapper.deliveryStatus(event.getEventType())
+                        .ifPresent(status -> message.applyDeliveryStatus(
+                                status,
+                                event.getEventCreatedAt(),
+                                now
+                        )));
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
