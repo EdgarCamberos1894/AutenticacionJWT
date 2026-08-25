@@ -2,9 +2,9 @@ package com.cambers.auth.account.internal;
 
 import com.cambers.auth.account.EmailNormalizer;
 import com.cambers.auth.account.EmailVerification;
+import com.cambers.auth.account.internal.config.OneTimeTokenProperties;
 import com.cambers.auth.account.internal.model.*;
 import com.cambers.auth.account.internal.persistence.*;
-import com.cambers.auth.config.properties.OneTimeTokenProperties;
 import com.cambers.auth.email.AuthenticationEmailDelivery;
 import com.cambers.auth.exception.BadRequestException;
 import com.cambers.auth.exception.ProblemCode;

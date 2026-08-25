@@ -1,6 +1,5 @@
-package com.cambers.auth.config;
+package com.cambers.auth.authentication.internal.config;
 
-import com.cambers.auth.config.properties.JwtProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;

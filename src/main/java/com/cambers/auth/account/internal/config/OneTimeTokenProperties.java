@@ -1,4 +1,4 @@
-package com.cambers.auth.config.properties;
+package com.cambers.auth.account.internal.config;
 
 import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
