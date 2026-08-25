@@ -107,6 +107,10 @@ public class EmailOutboxMessage {
         return status == EmailOutboxStatus.PROCESSING && workerId.equals(lockedBy);
     }
 
+    public boolean isCancellable() {
+        return status == EmailOutboxStatus.PENDING || status == EmailOutboxStatus.PROCESSING;
+    }
+
     public void markAccepted(String providerMessageId, Instant now) {
         this.status = EmailOutboxStatus.SENT;
         this.providerMessageId = providerMessageId;
@@ -123,6 +127,18 @@ public class EmailOutboxMessage {
         this.lastErrorCode = errorCode;
         this.nextAttemptAt = nextAttemptAt;
         clearLease();
+        this.updatedAt = now;
+    }
+
+    public void cancel(String reason, Instant now) {
+        if (!isCancellable()) {
+            return;
+        }
+        this.status = EmailOutboxStatus.CANCELLED;
+        this.lastErrorCode = reason;
+        applyDeliveryStatus(EmailDeliveryStatus.CANCELLED, now, now);
+        clearLease();
+        scrubPayload();
         this.updatedAt = now;
     }
 
