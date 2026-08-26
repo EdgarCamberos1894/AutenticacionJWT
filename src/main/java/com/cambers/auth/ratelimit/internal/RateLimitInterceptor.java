@@ -1,14 +1,14 @@
 package com.cambers.auth.ratelimit.internal;
 
-import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.observability.SecurityAuditAction;
 import com.cambers.auth.observability.SecurityAuditEvent;
 import com.cambers.auth.observability.SecurityAuditOutcome;
 import com.cambers.auth.observability.SecurityAuditPublisher;
 import com.cambers.auth.observability.SecurityAuditReason;
+import com.cambers.auth.platform.ProblemCode;
+import com.cambers.auth.platform.ProblemResponseWriter;
 import com.cambers.auth.ratelimit.ClientIpResolver;
 import com.cambers.auth.ratelimit.RateLimitBackendUnavailableException;
-import com.cambers.auth.security.SecurityProblemWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -25,14 +25,14 @@ class RateLimitInterceptor implements HandlerInterceptor {
     private final RateLimitPolicyResolver policyResolver;
     private final RequestRateLimiter requestRateLimiter;
     private final ClientIpResolver clientIpResolver;
-    private final SecurityProblemWriter problemWriter;
+    private final ProblemResponseWriter problemWriter;
     private final SecurityAuditPublisher auditPublisher;
 
     RateLimitInterceptor(
             RateLimitPolicyResolver policyResolver,
             RequestRateLimiter requestRateLimiter,
             ClientIpResolver clientIpResolver,
-            SecurityProblemWriter problemWriter,
+            ProblemResponseWriter problemWriter,
             SecurityAuditPublisher auditPublisher) {
         this.policyResolver = policyResolver;
         this.requestRateLimiter = requestRateLimiter;

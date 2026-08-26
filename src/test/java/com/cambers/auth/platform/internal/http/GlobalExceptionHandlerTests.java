@@ -1,4 +1,4 @@
-package com.cambers.auth.exception;
+package com.cambers.auth.platform.internal.http;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,4 +1,4 @@
-package com.cambers.auth.validation;
+package com.cambers.auth.platform.internal.http;
 
 public record ValidationError(String detail, String pointer) {
 }

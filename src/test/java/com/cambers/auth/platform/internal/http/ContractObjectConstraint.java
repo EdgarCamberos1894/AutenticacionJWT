@@ -1,4 +1,4 @@
-package com.cambers.auth.exception;
+package com.cambers.auth.platform.internal.http;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;

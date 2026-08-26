@@ -1,4 +1,4 @@
-package com.cambers.auth.exception;
+package com.cambers.auth.platform;
 
 import java.net.URI;
 

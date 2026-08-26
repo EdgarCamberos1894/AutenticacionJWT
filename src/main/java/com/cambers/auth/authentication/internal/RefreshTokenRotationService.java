@@ -7,8 +7,8 @@ import com.cambers.auth.authentication.internal.model.AuthSession;
 import com.cambers.auth.authentication.internal.model.RefreshToken;
 import com.cambers.auth.authentication.internal.persistence.RefreshTokenRepository;
 import com.cambers.auth.authentication.internal.token.RefreshTokenGenerator;
-import com.cambers.auth.exception.ProblemCode;
-import com.cambers.auth.exception.UnauthorizedException;
+import com.cambers.auth.platform.ProblemCode;
+import com.cambers.auth.platform.UnauthorizedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

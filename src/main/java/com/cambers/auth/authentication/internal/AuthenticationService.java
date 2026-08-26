@@ -5,13 +5,13 @@ import com.cambers.auth.authentication.LoginRequest;
 import com.cambers.auth.authentication.RefreshTokenRequest;
 import com.cambers.auth.authentication.SessionAuthentication;
 import com.cambers.auth.authentication.TokenPairResponse;
-import com.cambers.auth.exception.ProblemCode;
-import com.cambers.auth.exception.UnauthorizedException;
 import com.cambers.auth.observability.SecurityAuditAction;
 import com.cambers.auth.observability.SecurityAuditEvent;
 import com.cambers.auth.observability.SecurityAuditOutcome;
 import com.cambers.auth.observability.SecurityAuditPublisher;
 import com.cambers.auth.observability.SecurityAuditReason;
+import com.cambers.auth.platform.ProblemCode;
+import com.cambers.auth.platform.UnauthorizedException;
 import org.springframework.stereotype.Service;
 
 @Service

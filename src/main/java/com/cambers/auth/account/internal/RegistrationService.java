@@ -7,7 +7,6 @@ import com.cambers.auth.account.RegistrationResponse;
 import com.cambers.auth.account.RoleName;
 import com.cambers.auth.account.internal.model.User;
 import com.cambers.auth.account.internal.persistence.UserRepository;
-import com.cambers.auth.exception.EmailAlreadyRegisteredException;
 import com.cambers.auth.observability.SecurityAuditAction;
 import com.cambers.auth.observability.SecurityAuditEvent;
 import com.cambers.auth.observability.SecurityAuditOutcome;

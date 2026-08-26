@@ -9,12 +9,13 @@ import com.cambers.auth.authentication.TokenPairResponse;
 import com.cambers.auth.authentication.internal.config.SessionProperties;
 import com.cambers.auth.authentication.internal.model.AuthSession;
 import com.cambers.auth.authentication.internal.persistence.AuthSessionRepository;
-import com.cambers.auth.exception.ProblemCode;
-import com.cambers.auth.exception.UnauthorizedException;
 import com.cambers.auth.observability.*;
+import com.cambers.auth.platform.ProblemCode;
+import com.cambers.auth.platform.UnauthorizedException;
 import com.cambers.auth.ratelimit.LoginRateLimitService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Clock;
 import java.time.Instant;
 

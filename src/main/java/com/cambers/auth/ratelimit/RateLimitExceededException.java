@@ -1,10 +1,11 @@
 package com.cambers.auth.ratelimit;
 
-import com.cambers.auth.exception.ApiException;
-import com.cambers.auth.exception.ProblemCode;
+import com.cambers.auth.platform.ApiException;
+import com.cambers.auth.platform.ProblemCode;
+import com.cambers.auth.platform.RetryAfterProvider;
 import org.springframework.http.HttpStatus;
 
-public class RateLimitExceededException extends ApiException {
+public class RateLimitExceededException extends ApiException implements RetryAfterProvider {
 
     private final long retryAfterSeconds;
 
@@ -17,6 +18,7 @@ public class RateLimitExceededException extends ApiException {
         this.retryAfterSeconds = Math.max(1, retryAfterSeconds);
     }
 
+    @Override
     public long retryAfterSeconds() {
         return retryAfterSeconds;
     }

@@ -1,6 +1,6 @@
 @org.springframework.modulith.ApplicationModule(
         id = "delivery",
         displayName = "Transactional Email Delivery",
-        allowedDependencies = {}
+        allowedDependencies = {"platform"}
 )
 package com.cambers.auth.email;
