@@ -1,4 +1,4 @@
-package com.cambers.auth.email;
+package com.cambers.auth.email.internal;
 
 public interface TransactionalEmailSender {
 

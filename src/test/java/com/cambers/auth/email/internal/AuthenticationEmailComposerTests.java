@@ -1,4 +1,4 @@
-package com.cambers.auth.email;
+package com.cambers.auth.email.internal;
 
 import com.cambers.auth.email.internal.config.AuthenticationEmailProperties;
 import com.cambers.auth.email.internal.config.PasswordResetDeliveryProperties;

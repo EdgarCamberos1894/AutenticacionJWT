@@ -1,9 +1,9 @@
 package com.cambers.auth.email.outbox;
 
+import com.cambers.auth.email.internal.EmailDeliveryReceipt;
+import com.cambers.auth.email.internal.TransactionalEmail;
+import com.cambers.auth.email.internal.TransactionalEmailSender;
 import com.cambers.auth.email.internal.config.EmailOutboxProperties;
-import com.cambers.auth.email.EmailDeliveryReceipt;
-import com.cambers.auth.email.TransactionalEmail;
-import com.cambers.auth.email.TransactionalEmailSender;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

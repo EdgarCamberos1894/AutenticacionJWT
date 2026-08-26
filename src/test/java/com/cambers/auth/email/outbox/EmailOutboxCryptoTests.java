@@ -1,8 +1,8 @@
 package com.cambers.auth.email.outbox;
 
+import com.cambers.auth.email.internal.EmailTag;
+import com.cambers.auth.email.internal.TransactionalEmail;
 import com.cambers.auth.email.internal.config.EmailOutboxProperties;
-import com.cambers.auth.email.EmailTag;
-import com.cambers.auth.email.TransactionalEmail;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 

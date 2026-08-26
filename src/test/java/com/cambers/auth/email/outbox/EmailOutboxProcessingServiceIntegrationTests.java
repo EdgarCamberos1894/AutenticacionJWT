@@ -1,7 +1,7 @@
 package com.cambers.auth.email.outbox;
 
-import com.cambers.auth.email.EmailTag;
-import com.cambers.auth.email.TransactionalEmail;
+import com.cambers.auth.email.internal.EmailTag;
+import com.cambers.auth.email.internal.TransactionalEmail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
