@@ -24,6 +24,7 @@
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
         <nimbus-jose-jwt.version>10.9.1</nimbus-jose-jwt.version>
         <spring-modulith.version>2.1.0</spring-modulith.version>
+        <springdoc-openapi.version>3.1.0</springdoc-openapi.version>
     </properties>
 
     <dependencyManagement>
@@ -59,6 +60,11 @@
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
             <version>${nimbus-jose-jwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc-openapi.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

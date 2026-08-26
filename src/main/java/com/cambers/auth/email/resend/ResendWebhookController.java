@@ -1,5 +1,8 @@
 package com.cambers.auth.email.resend;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/webhooks/resend")
+@Tag(name = "Delivery callbacks", description = "Provider-authenticated transactional email callbacks")
 class ResendWebhookController {
 
     private final ResendWebhookVerifier verifier;
@@ -30,6 +34,9 @@ class ResendWebhookController {
         this.webhookService = webhookService;
     }
 
+    @Operation(summary = "Receive a verified Resend delivery event",
+            description = "Authentication uses the Resend/Svix signature headers over the raw request body, not bearer JWT.")
+    @ApiResponse(responseCode = "204", description = "Webhook accepted or already processed idempotently")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void receive(
