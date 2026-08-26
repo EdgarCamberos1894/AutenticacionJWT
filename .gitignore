@@ -1,9 +1,6 @@
-target/
-.idea/
-*.iml
-.vscode/
-.DS_Store
+node_modules/
+dist/
 .env
-.env.*
-!.env.example
+.env.local
+.DS_Store
 *.log
