@@ -1,4 +1,4 @@
-package com.cambers.auth.config.properties;
+package com.cambers.auth.email.internal.config;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

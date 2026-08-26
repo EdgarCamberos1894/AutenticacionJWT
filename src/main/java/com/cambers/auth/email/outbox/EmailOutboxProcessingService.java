@@ -1,6 +1,6 @@
 package com.cambers.auth.email.outbox;
 
-import com.cambers.auth.config.properties.EmailOutboxProperties;
+import com.cambers.auth.email.internal.config.EmailOutboxProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

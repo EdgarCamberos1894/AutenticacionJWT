@@ -1,8 +1,8 @@
 package com.cambers.auth.email;
 
-import com.cambers.auth.config.properties.AuthenticationEmailProperties;
-import com.cambers.auth.config.properties.PasswordResetDeliveryProperties;
-import com.cambers.auth.config.properties.VerificationDeliveryProperties;
+import com.cambers.auth.email.internal.config.AuthenticationEmailProperties;
+import com.cambers.auth.email.internal.config.PasswordResetDeliveryProperties;
+import com.cambers.auth.email.internal.config.VerificationDeliveryProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.util.UriComponentsBuilder;

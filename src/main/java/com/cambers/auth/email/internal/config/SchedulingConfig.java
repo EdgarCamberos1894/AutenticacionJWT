@@ -1,4 +1,4 @@
-package com.cambers.auth.config;
+package com.cambers.auth.email.internal.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;

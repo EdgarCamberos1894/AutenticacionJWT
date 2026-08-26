@@ -1,6 +1,6 @@
 package com.cambers.auth.email.resend;
 
-import com.cambers.auth.config.properties.ResendWebhookProperties;
+import com.cambers.auth.email.internal.config.ResendWebhookProperties;
 import com.cambers.auth.exception.BadRequestException;
 import com.cambers.auth.exception.ProblemCode;
 import org.springframework.http.HttpHeaders;
