@@ -16,6 +16,7 @@ security:
     keys:
       public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
       private-key-location: ${JWT_PRIVATE_KEY_LOCATION}
+      previous-public-key-locations: ${JWT_PREVIOUS_PUBLIC_KEY_LOCATIONS:}
 
 auth:
   email:

@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.Duration;
+import java.util.List;
 
 @Validated
 @ConfigurationProperties(prefix = "security.jwt")
@@ -22,6 +23,19 @@ public record JwtProperties(
         }
     }
 
-    public record Keys(String publicKeyLocation, String privateKeyLocation) {
+    public record Keys(
+            String publicKeyLocation,
+            String privateKeyLocation,
+            List<String> previousPublicKeyLocations
+    ) {
+        public Keys {
+            previousPublicKeyLocations = previousPublicKeyLocations == null
+                    ? List.of()
+                    : previousPublicKeyLocations.stream()
+                            .filter(location -> location != null && !location.isBlank())
+                            .map(String::trim)
+                            .distinct()
+                            .toList();
+        }
     }
 }
