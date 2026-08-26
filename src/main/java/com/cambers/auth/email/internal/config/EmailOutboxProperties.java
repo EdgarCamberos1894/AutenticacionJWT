@@ -1,4 +1,4 @@
-package com.cambers.auth.config.properties;
+package com.cambers.auth.email.internal.config;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

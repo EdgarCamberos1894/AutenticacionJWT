@@ -1,6 +1,6 @@
 package com.cambers.auth.email.resend;
 
-import com.cambers.auth.config.properties.ResendProperties;
+import com.cambers.auth.email.internal.config.ResendProperties;
 import com.cambers.auth.email.EmailDeliveryException;
 import com.cambers.auth.email.EmailDeliveryReceipt;
 import com.cambers.auth.email.EmailTag;

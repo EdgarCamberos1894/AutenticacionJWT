@@ -1,6 +1,6 @@
 package com.cambers.auth.email.outbox;
 
-import com.cambers.auth.config.properties.EmailOutboxProperties;
+import com.cambers.auth.email.internal.config.EmailOutboxProperties;
 import com.cambers.auth.email.EmailDeliveryException;
 import com.cambers.auth.email.EmailDeliveryReceipt;
 import com.cambers.auth.email.TransactionalEmail;
