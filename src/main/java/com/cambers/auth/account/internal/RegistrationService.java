@@ -6,6 +6,7 @@ import com.cambers.auth.account.RegisterRequest;
 import com.cambers.auth.account.RegistrationResponse;
 import com.cambers.auth.account.RoleName;
 import com.cambers.auth.account.internal.model.User;
+import com.cambers.auth.account.internal.password.PasswordCompromisePolicy;
 import com.cambers.auth.account.internal.persistence.UserRepository;
 import com.cambers.auth.observability.SecurityAuditAction;
 import com.cambers.auth.observability.SecurityAuditEvent;
@@ -24,16 +25,19 @@ import java.time.Instant;
 public class RegistrationService implements AccountRegistration {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordCompromisePolicy passwordCompromisePolicy;
     private final EmailVerificationService emailVerificationService;
     private final EmailNormalizer emailNormalizer;
     private final SecurityAuditPublisher auditPublisher;
     private final Clock clock;
 
     public RegistrationService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                               PasswordCompromisePolicy passwordCompromisePolicy,
                                EmailVerificationService emailVerificationService, EmailNormalizer emailNormalizer,
                                SecurityAuditPublisher auditPublisher, Clock clock) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.passwordCompromisePolicy = passwordCompromisePolicy;
         this.emailVerificationService = emailVerificationService;
         this.emailNormalizer = emailNormalizer;
         this.auditPublisher = auditPublisher;
@@ -45,6 +49,7 @@ public class RegistrationService implements AccountRegistration {
     public RegistrationResponse register(RegisterRequest request) {
         String normalizedEmail = emailNormalizer.normalize(request.email());
         if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) throw alreadyRegistered();
+        passwordCompromisePolicy.requireSafe(request.password());
         Instant now = clock.instant();
         User user = new User(normalizedEmail, passwordEncoder.encode(request.password()), now);
         user.assignRole(RoleName.USER, now);
