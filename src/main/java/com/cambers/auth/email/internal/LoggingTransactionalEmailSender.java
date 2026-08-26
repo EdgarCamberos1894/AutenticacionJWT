@@ -1,4 +1,4 @@
-package com.cambers.auth.email;
+package com.cambers.auth.email.internal;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

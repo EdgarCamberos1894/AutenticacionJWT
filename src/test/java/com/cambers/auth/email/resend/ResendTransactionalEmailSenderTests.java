@@ -1,9 +1,9 @@
 package com.cambers.auth.email.resend;
 
+import com.cambers.auth.email.internal.EmailDeliveryException;
+import com.cambers.auth.email.internal.EmailTag;
+import com.cambers.auth.email.internal.TransactionalEmail;
 import com.cambers.auth.email.internal.config.ResendProperties;
-import com.cambers.auth.email.EmailDeliveryException;
-import com.cambers.auth.email.EmailTag;
-import com.cambers.auth.email.TransactionalEmail;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;

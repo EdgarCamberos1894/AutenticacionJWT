@@ -1,8 +1,8 @@
 package com.cambers.auth.email.outbox;
 
-import com.cambers.auth.email.AuthenticationEmailComposer;
 import com.cambers.auth.email.AuthenticationEmailDelivery;
-import com.cambers.auth.email.TransactionalEmail;
+import com.cambers.auth.email.internal.AuthenticationEmailComposer;
+import com.cambers.auth.email.internal.TransactionalEmail;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;

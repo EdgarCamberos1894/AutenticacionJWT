@@ -1,11 +1,11 @@
 package com.cambers.auth.email.resend;
 
+import com.cambers.auth.email.internal.EmailDeliveryException;
+import com.cambers.auth.email.internal.EmailDeliveryReceipt;
+import com.cambers.auth.email.internal.EmailTag;
+import com.cambers.auth.email.internal.TransactionalEmail;
+import com.cambers.auth.email.internal.TransactionalEmailSender;
 import com.cambers.auth.email.internal.config.ResendProperties;
-import com.cambers.auth.email.EmailDeliveryException;
-import com.cambers.auth.email.EmailDeliveryReceipt;
-import com.cambers.auth.email.EmailTag;
-import com.cambers.auth.email.TransactionalEmail;
-import com.cambers.auth.email.TransactionalEmailSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
