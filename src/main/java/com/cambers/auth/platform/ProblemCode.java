@@ -6,6 +6,7 @@ public enum ProblemCode {
 
     INVALID_REQUEST("INVALID_REQUEST", "invalid-request", "Invalid request"),
     VALIDATION_ERROR("VALIDATION_ERROR", "validation-error", "Request validation failed"),
+    COMPROMISED_PASSWORD("COMPROMISED_PASSWORD", "compromised-password", "Compromised password"),
     INVALID_CREDENTIALS("INVALID_CREDENTIALS", "invalid-credentials", "Invalid credentials"),
     INVALID_REFRESH_TOKEN("INVALID_REFRESH_TOKEN", "invalid-refresh-token", "Invalid refresh token"),
     INVALID_VERIFICATION_TOKEN("INVALID_VERIFICATION_TOKEN", "invalid-verification-token", "Invalid verification token"),

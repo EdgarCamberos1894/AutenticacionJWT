@@ -3,6 +3,7 @@ package com.cambers.auth.account.internal;
 import com.cambers.auth.account.*;
 import com.cambers.auth.account.internal.config.OneTimeTokenProperties;
 import com.cambers.auth.account.internal.model.*;
+import com.cambers.auth.account.internal.password.PasswordCompromisePolicy;
 import com.cambers.auth.account.internal.persistence.*;
 import com.cambers.auth.account.internal.token.GeneratedOpaqueToken;
 import com.cambers.auth.account.internal.token.SecureOpaqueTokenGenerator;
@@ -28,6 +29,7 @@ public class PasswordResetService implements PasswordRecovery {
     private final SecureOpaqueTokenGenerator tokenGenerator;
     private final OneTimeTokenProperties properties;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordCompromisePolicy passwordCompromisePolicy;
     private final AuthenticationEmailDelivery emailDelivery;
     private final EmailNormalizer emailNormalizer;
     private final RecoveryRateLimitService recoveryRateLimitService;
@@ -37,6 +39,7 @@ public class PasswordResetService implements PasswordRecovery {
 
     public PasswordResetService(OneTimeTokenRepository oneTimeTokenRepository, UserRepository userRepository,
             SecureOpaqueTokenGenerator tokenGenerator, OneTimeTokenProperties properties, PasswordEncoder passwordEncoder,
+            PasswordCompromisePolicy passwordCompromisePolicy,
             AuthenticationEmailDelivery emailDelivery, EmailNormalizer emailNormalizer,
             RecoveryRateLimitService recoveryRateLimitService,
             SecurityAuditPublisher auditPublisher, ApplicationEventPublisher eventPublisher, Clock clock) {
@@ -45,6 +48,7 @@ public class PasswordResetService implements PasswordRecovery {
         this.tokenGenerator = tokenGenerator;
         this.properties = properties;
         this.passwordEncoder = passwordEncoder;
+        this.passwordCompromisePolicy = passwordCompromisePolicy;
         this.emailDelivery = emailDelivery;
         this.emailNormalizer = emailNormalizer;
         this.recoveryRateLimitService = recoveryRateLimitService;
@@ -68,6 +72,7 @@ public class PasswordResetService implements PasswordRecovery {
     public void confirmReset(String rawToken, String newPassword) {
         String tokenHash = tokenGenerator.hash(rawToken);
         UUID userId = oneTimeTokenRepository.findUserIdByTokenHash(tokenHash).orElseThrow(this::invalidResetToken);
+        passwordCompromisePolicy.requireSafe(newPassword);
         User user = userRepository.findByIdForUpdate(userId).orElseThrow(this::invalidResetToken);
         OneTimeToken token = oneTimeTokenRepository.findByTokenHashForUpdate(tokenHash).orElseThrow(this::invalidResetToken);
         Instant now = clock.instant();

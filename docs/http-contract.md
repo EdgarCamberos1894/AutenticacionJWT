@@ -35,6 +35,8 @@ Email-verification resend and password-reset request use the same outward-facing
 
 Registration remains `201` because the account resource and its one-time-token/outbox intent are committed before the response.
 
+New passwords are screened against known compromised-password data when they are created or changed in production. A compromised password returns `422` with stable code `COMPROMISED_PASSWORD`. If password-safety verification is temporarily unavailable, the mutation fails closed with `503 Service Unavailable` and `Retry-After`; login for existing accounts does not depend on that external check.
+
 Session revocation is ownership-scoped by the authenticated user. Attempting to address another user's session does not expose or mutate that session.
 
 ## Provider callback
@@ -61,12 +63,12 @@ Errors use `Content-Type: application/problem+json`.
 | Requested response representation is not acceptable | `406 Not Acceptable` |
 | Current resource state conflicts with request | `409 Conflict` |
 | Unsupported request content type | `415 Unsupported Media Type` |
-| Syntactically valid request with invalid body fields, object constraints or method parameters | `422 Unprocessable Content` |
+| Syntactically valid request with invalid body fields, object constraints, method parameters, or a compromised new password | `422 Unprocessable Content` |
 | Rate limit exceeded | `429 Too Many Requests` |
 | Unexpected server failure or invalid controller return value | `500 Internal Server Error` |
-| Required rate-limit backend unavailable | `503 Service Unavailable` |
+| Required security dependency or rate-limit backend unavailable | `503 Service Unavailable` |
 
-Authentication failures include `WWW-Authenticate: Bearer` where applicable. Rate-limit responses include `Retry-After`.
+Authentication failures include `WWW-Authenticate: Bearer` where applicable. Rate-limit and retryable security-dependency responses include `Retry-After`.
 
 Spring MVC errors handled by the framework itself are enriched at the final response-entity boundary so RFC 9457 responses retain the same stable `code` and `timestamp` extensions as application-generated problems.
 
