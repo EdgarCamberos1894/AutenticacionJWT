@@ -1,6 +1,7 @@
-package com.cambers.auth.security;
+package com.cambers.auth.platform.internal.security;
 
-import com.cambers.auth.exception.ProblemCode;
+import com.cambers.auth.platform.ProblemCode;
+import com.cambers.auth.platform.ProblemResponseWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -14,7 +15,7 @@ import java.net.URI;
 import java.time.Clock;
 
 @Component
-public class SecurityProblemWriter {
+public class SecurityProblemWriter implements ProblemResponseWriter {
 
     private final JsonMapper jsonMapper;
     private final Clock clock;
@@ -24,6 +25,7 @@ public class SecurityProblemWriter {
         this.clock = clock;
     }
 
+    @Override
     public void write(
             HttpServletRequest request,
             HttpServletResponse response,

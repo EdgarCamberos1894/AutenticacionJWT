@@ -1,4 +1,4 @@
-package com.cambers.auth.exception;
+package com.cambers.auth.platform;
 
 import org.springframework.http.HttpStatus;
 

@@ -1,8 +1,8 @@
 package com.cambers.auth.ratelimit.internal;
 
 import com.cambers.auth.observability.SecurityAuditPublisher;
+import com.cambers.auth.platform.ProblemResponseWriter;
 import com.cambers.auth.ratelimit.ClientIpResolver;
-import com.cambers.auth.security.SecurityProblemWriter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,7 +30,7 @@ public class RateLimitConfig {
                 RateLimitPolicyResolver policyResolver,
                 RequestRateLimiter requestRateLimiter,
                 ClientIpResolver clientIpResolver,
-                SecurityProblemWriter problemWriter,
+                ProblemResponseWriter problemWriter,
                 SecurityAuditPublisher auditPublisher) {
             return new RateLimitInterceptor(
                     policyResolver,

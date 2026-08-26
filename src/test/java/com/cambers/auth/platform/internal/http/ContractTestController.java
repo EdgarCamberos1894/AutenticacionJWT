@@ -1,5 +1,6 @@
-package com.cambers.auth.exception;
+package com.cambers.auth.platform.internal.http;
 
+import com.cambers.auth.platform.ConflictException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

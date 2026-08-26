@@ -1,8 +1,8 @@
 package com.cambers.auth.email.resend;
 
 import com.cambers.auth.email.outbox.EmailOutboxRepository;
-import com.cambers.auth.exception.BadRequestException;
-import com.cambers.auth.exception.ProblemCode;
+import com.cambers.auth.platform.BadRequestException;
+import com.cambers.auth.platform.ProblemCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;

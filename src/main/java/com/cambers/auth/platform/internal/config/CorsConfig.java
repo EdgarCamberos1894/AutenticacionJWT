@@ -1,6 +1,5 @@
-package com.cambers.auth.config;
+package com.cambers.auth.platform.internal.config;
 
-import com.cambers.auth.config.properties.CorsProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;

@@ -8,12 +8,13 @@ import com.cambers.auth.account.internal.persistence.*;
 import com.cambers.auth.account.internal.token.GeneratedOpaqueToken;
 import com.cambers.auth.account.internal.token.SecureOpaqueTokenGenerator;
 import com.cambers.auth.email.AuthenticationEmailDelivery;
-import com.cambers.auth.exception.BadRequestException;
-import com.cambers.auth.exception.ProblemCode;
 import com.cambers.auth.observability.*;
+import com.cambers.auth.platform.BadRequestException;
+import com.cambers.auth.platform.ProblemCode;
 import com.cambers.auth.ratelimit.RecoveryRateLimitService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;

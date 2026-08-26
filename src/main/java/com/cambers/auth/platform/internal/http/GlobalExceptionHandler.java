@@ -1,8 +1,8 @@
-package com.cambers.auth.exception;
+package com.cambers.auth.platform.internal.http;
 
-import com.cambers.auth.ratelimit.RateLimitBackendUnavailableException;
-import com.cambers.auth.ratelimit.RateLimitExceededException;
-import com.cambers.auth.validation.ValidationError;
+import com.cambers.auth.platform.ApiException;
+import com.cambers.auth.platform.ProblemCode;
+import com.cambers.auth.platform.RetryAfterProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -44,12 +44,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (exception.status() == HttpStatus.UNAUTHORIZED) {
             headers.set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         }
-        if (exception instanceof RateLimitExceededException rateLimitExceededException) {
-            headers.set(HttpHeaders.RETRY_AFTER, Long.toString(rateLimitExceededException.retryAfterSeconds()));
+        if (exception instanceof RetryAfterProvider retryAfterProvider) {
+            headers.set(HttpHeaders.RETRY_AFTER, Long.toString(Math.max(1, retryAfterProvider.retryAfterSeconds())));
         }
-        if (exception instanceof RateLimitBackendUnavailableException) {
-            headers.set(HttpHeaders.RETRY_AFTER, "1");
-            log.error("Rate-limit backend unavailable while processing {}", request.getDescription(false), exception);
+        if (exception.status().is5xxServerError()) {
+            log.error("API service failure while processing {}", request.getDescription(false), exception);
         }
 
         return handleExceptionInternal(exception, problem, headers, exception.status(), request);
