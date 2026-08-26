@@ -9,6 +9,12 @@ spring:
   jpa:
     show-sql: false
 
+springdoc:
+  api-docs:
+    enabled: ${OPENAPI_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_UI_ENABLED:false}
+
 security:
   jwt:
     issuer: ${JWT_ISSUER}
